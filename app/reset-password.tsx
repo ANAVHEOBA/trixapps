@@ -3,7 +3,7 @@ import { router } from "expo-router";
 import { useState } from "react";
 import { Ionicons } from '@expo/vector-icons';
 
-export default function SignInDetailsScreen() {
+export default function ResetPasswordScreen() {
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
@@ -14,7 +14,7 @@ export default function SignInDetailsScreen() {
   const isFormValid = () => {
     return (
       username.length >= 3 &&
-      password.length >= 6 &&
+      password.length >= 8 &&
       password === confirmPassword
     );
   };
@@ -30,11 +30,10 @@ export default function SignInDetailsScreen() {
       </Pressable>
 
       {/* Title and Description */}
-      <Text style={styles.title}>Create Sign in Details</Text>
+      <Text style={styles.title}>Create a New Password</Text>
       <Text style={styles.description}>
-        Create a unique username and secure password to{'\n'}
-        complete your account setup. This will be your login{'\n'}
-        information.
+        Enter a new secure password, and ensure it meets{'\n'}
+        our security requirements. Keep safe this time.
       </Text>
 
       {/* Form Fields */}
@@ -102,35 +101,24 @@ export default function SignInDetailsScreen() {
         </Pressable>
       </View>
 
-      {/* Progress Dots */}
-      <View style={styles.progressContainer}>
-        {[0, 1, 2, 3].map((index) => (
-          <View 
-            key={index}
-            style={[
-              styles.progressDot,
-              index === 3 ? styles.progressDotActive : null
-            ]} 
-          />
-        ))}
+      {/* Update Button */}
+      <View style={styles.bottomContainer}>
+        <Pressable 
+          style={[
+            styles.updateButton,
+            !isFormValid() && styles.updateButtonDisabled
+          ]}
+          onPress={() => router.push("/success")}
+          disabled={!isFormValid()}
+        >
+          <Text style={styles.updateButtonText}>Update</Text>
+        </Pressable>
+
+        {/* Sign In Link */}
+        <Text style={styles.signInText}>
+          Already Have an Account? <Text style={styles.signInLink} onPress={() => router.push("/signin")}>Sign in</Text>
+        </Text>
       </View>
-
-      {/* Confirm Button */}
-      <Pressable 
-        style={[
-          styles.confirmButton,
-          !isFormValid() && styles.confirmButtonDisabled
-        ]}
-        onPress={() => router.push("/success")}
-        disabled={!isFormValid()}
-      >
-        <Text style={styles.confirmButtonText}>Confirm</Text>
-      </Pressable>
-
-      {/* Sign In Link */}
-      <Text style={styles.signInText}>
-        Already Have an Account? <Text style={styles.signInLink} onPress={() => router.push("/signins")}>Sign in</Text>
-      </Text>
     </View>
   );
 }
@@ -167,7 +155,6 @@ const styles = StyleSheet.create({
   },
   form: {
     gap: 16,
-    marginBottom: 32,
   },
   input: {
     height: 56,
@@ -213,22 +200,12 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: '#666',
   },
-  progressContainer: {
-    flexDirection: 'row',
-    justifyContent: 'center',
-    gap: 8,
-    marginBottom: 32,
+  bottomContainer: {
+    flex: 1,
+    justifyContent: 'flex-end',
+    marginBottom: 24,
   },
-  progressDot: {
-    width: 8,
-    height: 8,
-    borderRadius: 4,
-    backgroundColor: '#E0E0E0',
-  },
-  progressDotActive: {
-    backgroundColor: '#8A2BE2',
-  },
-  confirmButton: {
+  updateButton: {
     backgroundColor: '#8A2BE2',
     height: 56,
     borderRadius: 28,
@@ -236,10 +213,10 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginBottom: 24,
   },
-  confirmButtonDisabled: {
+  updateButtonDisabled: {
     opacity: 0.5,
   },
-  confirmButtonText: {
+  updateButtonText: {
     color: '#FFFFFF',
     fontSize: 16,
     fontWeight: '600',
