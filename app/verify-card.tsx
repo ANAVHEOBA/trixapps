@@ -67,13 +67,22 @@ export default function VerifyCardScreen() {
       {/* Confirm Button */}
       <View style={styles.bottomContainer}>
       // Update the Confirm Button section
-<Pressable 
+      <Pressable 
   style={styles.confirmButton}
-  onPress={() => {
-    // You might want to add verification logic here before navigation
-    router.push('/wallet'); // Navigate to wallet screen
-    // Or if you want to clear the navigation stack and make wallet the root screen:
-    // router.replace('/wallet');
+  onPress={async () => {
+    setIsLoading(true);
+    try {
+      // Add verification logic here
+      await new Promise(resolve => setTimeout(resolve, 1500)); // Simulate API call
+      
+      // Navigate to the new wallet screen with card
+      router.replace('/wallet-with-card'); // Using replace to prevent going back to verification
+    } catch (error) {
+      console.error(error);
+      // Handle error
+    } finally {
+      setIsLoading(false);
+    }
   }}
 >
   <Text style={styles.confirmButtonText}>Confirm</Text>
