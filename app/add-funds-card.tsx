@@ -52,7 +52,7 @@ export default function AddFundsCardScreen() {
           >
           <Text style={styles.optionText}>•••• •••• •••• 5730</Text>
          <Image 
-        source={require("../assets/mastercard.png")}
+        source={require("../assets/logos_mastercard.png")}
          style={styles.cardIcon}
         />
       </Pressable>

@@ -32,7 +32,7 @@ export default function HomeScreen() {
 
   const recentServices = Array(7).fill({
     title: "Service Place Holder",
-    image: require("../assets/Ellipse100.png")
+    image: require("../assets/avatar.png")
   });
 
   return (
@@ -94,7 +94,7 @@ export default function HomeScreen() {
       >
         <View style={styles.profileInfo}>
           <Image 
-            source={require("../assets/Ellipse100.png")}
+            source={require("../assets/userprofilepicture.png")}
             style={styles.profileImage}
           />
           <View>

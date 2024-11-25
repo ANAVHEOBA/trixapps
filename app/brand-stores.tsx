@@ -10,7 +10,7 @@ export default function BrandStoresScreen() {
   const corsairCards = Array(8).fill({
     name: "Corsair",
     rating: "4.5",
-    image: require("../assets/corsair-logo-brand.png")
+    image: require("../assets/corsair-logo-brands.png")
   });
 
   return (

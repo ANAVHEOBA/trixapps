@@ -63,7 +63,7 @@ export default function CardPaymentScreen() {
               keyboardType="numeric"
             />
             <Image 
-              source={require("../assets/mastercard.png")}
+              source={require("../assets/logos_mastercard.png")}
               style={styles.cardTypeIcon}
             />
           </View>
