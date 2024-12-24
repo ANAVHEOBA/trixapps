@@ -1,14 +1,11 @@
-import { View, Text, TextInput, Image, Pressable, StyleSheet, SafeAreaView, Alert } from "react-native";
+import { View, Text, TextInput, Image, Pressable, StyleSheet, Alert } from "react-native";
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { router } from "expo-router";
-import { useState, useRef } from "react";
-import PhoneInput from "react-native-phone-number-input";
+import { useState } from "react";
+import CountryPicker from './components/CountryPicker';
+import { countries, Country } from './utils/countries';
 import storage from './utils/storage';
-
-
-// API Configuration
-const API_URI = 'http://10.0.2.2:8000/api'; // For Android Emulator
-// const API_URI = 'http://localhost:8000/api'; // For iOS Simulator
-// const API_URI = 'https://your-production-api.com/api'; // For Production
+import api from './utils/api';
 
 interface ApiResponse {
   success: boolean;
@@ -18,84 +15,58 @@ interface ApiResponse {
 
 export default function SignUpScreen() {
   const [phoneNumber, setPhoneNumber] = useState("");
-  const [formattedValue, setFormattedValue] = useState("");
+  const [selectedCountry, setSelectedCountry] = useState<Country>(countries[0]);
   const [referralCode, setReferralCode] = useState("");
   const [agreedToTerms, setAgreedToTerms] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
-  const phoneInput = useRef<PhoneInput>(null);
-
-
+  const [error, setError] = useState("");
 
   const validatePhone = async () => {
     try {
-      const response = await fetch(`${API_URI}/auth/validate-phone`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          phoneNumber: phoneNumber,
-          countryCode: phoneInput.current?.getCountryCode() || 'US',
-        }),
-      });
-
-      const data: ApiResponse = await response.json();
-      return data.success;
+      const response = await api.auth.validatePhone(
+        phoneNumber,
+        selectedCountry.code
+      );
+      return response.success;
     } catch (error) {
       console.error('Phone validation error:', error);
+      Alert.alert('Validation Error', error.message);
       return false;
     }
   };
-
 
   const sendOtp = async () => {
     try {
-      const response = await fetch(`${API_URI}/auth/send-otp`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          phoneNumber: phoneNumber,
-          countryCode: phoneInput.current?.getCountryCode() || 'US',
-        }),
-      });
-
-      const data: ApiResponse = await response.json();
-      return data.success;
+      const response = await api.auth.sendOtp(
+        phoneNumber,
+        selectedCountry.code
+      );
+      return response.success;
     } catch (error) {
       console.error('OTP sending error:', error);
+      Alert.alert('Error', 'Failed to send verification code');
       return false;
     }
   };
 
-
   const signUp = async () => {
     try {
-      const response = await fetch(`${API_URI}/auth/signup`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          phoneNumber: phoneNumber,
-          countryCode: phoneInput.current?.getCountryCode() || 'US',
-          referralCode: referralCode,
-          termsAccepted: agreedToTerms,
-        }),
+      const response = await api.auth.signUp({
+        phoneNumber,
+        countryCode: selectedCountry.code,
+        referralCode,
+        termsAccepted: agreedToTerms,
       });
-
-      const data: ApiResponse = await response.json();
       
-      if (data.success) {
-        // Use our storage utility instead of AsyncStorage directly
-        await storage.setItem('userToken', data.data.token);
-        await storage.setItem('userData', JSON.stringify(data.data.user));
+      if (response.success && response.data) {
+        await storage.setItem('userToken', response.data.token);
+        await storage.setItem('userData', JSON.stringify(response.data.user));
         return true;
       }
       return false;
     } catch (error) {
       console.error('Signup error:', error);
+      Alert.alert('Error', 'Failed to create account');
       return false;
     }
   };
@@ -106,47 +77,39 @@ export default function SignUpScreen() {
       return;
     }
 
+    if (!phoneNumber) {
+      Alert.alert('Error', 'Please enter your phone number');
+      return;
+    }
+
     try {
       setIsLoading(true);
+      setError("");
 
-      // Validate phone number
       const isPhoneValid = await validatePhone();
-      if (!isPhoneValid) {
-        Alert.alert('Error', 'Invalid phone number');
-        return;
-      }
+      if (!isPhoneValid) return;
 
-      // Send OTP
       const otpSent = await sendOtp();
-      if (!otpSent) {
-        Alert.alert('Error', 'Failed to send verification code');
-        return;
-      }
+      if (!otpSent) return;
 
+      const signupSuccess = await signUp();
+      if (!signupSuccess) return;
 
-       // Create account
-       const signupSuccess = await signUp();
-       if (!signupSuccess) {
-         Alert.alert('Error', 'Failed to create account');
-         return;
-       }
- 
-       // Navigate to verification page
-       router.push({
-         pathname: "/verification",
-         params: { 
-           phoneNumber: phoneNumber,
-           countryCode: phoneInput.current?.getCountryCode() || 'US'
-         }
-       });
- 
-     } catch (error) {
-       Alert.alert('Error', 'An unexpected error occurred');
-       console.error('Signup process error:', error);
-     } finally {
-       setIsLoading(false);
-     }
-   };
+      router.push({
+        pathname: "/verification",
+        params: { 
+          phoneNumber,
+          countryCode: selectedCountry.code
+        }
+      });
+
+    } catch (error) {
+      Alert.alert('Error', 'An unexpected error occurred');
+      console.error('Signup process error:', error);
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   return (
     <SafeAreaView style={styles.container}>
@@ -164,22 +127,21 @@ export default function SignUpScreen() {
         {/* Phone Input Section */}
         <View style={styles.inputSection}>
           <Text style={styles.inputLabel}>Phone Number</Text>
-          <PhoneInput
-            ref={phoneInput}
-            defaultValue={phoneNumber}
-            defaultCode="US"
-            layout="first"
-            onChangeText={setPhoneNumber}
-            onChangeFormattedText={setFormattedValue}
-            containerStyle={styles.phoneInputContainer}
-            textContainerStyle={styles.phoneInputText}
-            textInputStyle={styles.phoneNumberText}
-            codeTextStyle={styles.phoneCodeText}
-            flagButtonStyle={styles.flagButton}
-            countryPickerButtonStyle={styles.countryPickerButton}
-            placeholder="Your phone number"
-            autoFocus
-          />
+          <View style={styles.phoneInputContainer}>
+            <CountryPicker
+              selectedCountry={selectedCountry}
+              onSelect={setSelectedCountry}
+            />
+            <TextInput
+              style={styles.phoneInput}
+              value={phoneNumber}
+              onChangeText={setPhoneNumber}
+              placeholder="Enter phone number"
+              keyboardType="phone-pad"
+              placeholderTextColor="#666"
+            />
+          </View>
+          {error ? <Text style={styles.errorText}>{error}</Text> : null}
         </View>
 
         {/* Referral Code Section */}
@@ -203,38 +165,52 @@ export default function SignUpScreen() {
             {agreedToTerms && <View style={styles.checked} />}
           </Pressable>
           <Text style={styles.termsText}>
-            Agree with {' '}
-            <Text style={styles.termsLink}>Terms & Conditions</Text>
+            I agree to the{' '}
+            <Text 
+              style={styles.termsLink}
+              onPress={() => router.push("/terms")}
+            >
+              Terms & Conditions
+            </Text>
           </Text>
         </View>
 
         {/* Sign Up Button */}
         <Pressable 
-        style={[
-          styles.signUpButton, 
-          !agreedToTerms && styles.signUpButtonDisabled,
-          isLoading && styles.signUpButtonLoading
-        ]}
-        disabled={!agreedToTerms || isLoading}
-        onPress={handleSignUp}
-      >
-        <Text style={styles.signUpButtonText}>
-          {isLoading ? 'Please wait...' : 'Sign Up'}
-        </Text>
-      </Pressable>
+          style={[
+            styles.signUpButton, 
+            !agreedToTerms && styles.signUpButtonDisabled,
+            isLoading && styles.signUpButtonLoading
+          ]}
+          disabled={!agreedToTerms || isLoading}
+          onPress={handleSignUp}
+        >
+          <Text style={styles.signUpButtonText}>
+            {isLoading ? 'Please wait...' : 'Sign Up'}
+          </Text>
+        </Pressable>
 
         {/* Social Sign Up */}
         <View style={styles.socialContainer}>
           <Text style={styles.orText}>or Sign Up With</Text>
           <View style={styles.socialButtons}>
             <Pressable style={styles.socialButton}>
-              <Image source={require("../assets/google.png")} style={styles.socialIcon} />
+              <Image 
+                source={require("../assets/google.png")} 
+                style={styles.socialIcon} 
+              />
             </Pressable>
             <Pressable style={styles.socialButton}>
-              <Image source={require("../assets/apple.png")} style={styles.socialIcon} />
+              <Image 
+                source={require("../assets/apple.png")} 
+                style={styles.socialIcon} 
+              />
             </Pressable>
             <Pressable style={styles.socialButton}>
-              <Image source={require("../assets/facebook.png")} style={styles.socialIcon} />
+              <Image 
+                source={require("../assets/facebook.png")} 
+                style={styles.socialIcon} 
+              />
             </Pressable>
           </View>
         </View>
@@ -242,7 +218,7 @@ export default function SignUpScreen() {
         {/* Sign In Link */}
         <View style={styles.signInContainer}>
           <Text style={styles.signInText}>
-            Already have an Account? {' '}
+            Already have an Account?{' '}
             <Text 
               style={styles.signInLink}
               onPress={() => router.push("/signin")}
@@ -287,45 +263,20 @@ const styles = StyleSheet.create({
     fontWeight: '500',
   },
   phoneInputContainer: {
-    width: '100%',
-    height: 56,
-    backgroundColor: '#FFFFFF',
+    flexDirection: 'row',
+    alignItems: 'center',
     borderWidth: 1,
     borderColor: '#E0E0E0',
     borderRadius: 8,
-  },
-  phoneInputText: {
-    height: 54,
     backgroundColor: '#FFFFFF',
-    borderRadius: 8,
-    paddingVertical: 0,
-    paddingHorizontal: 8,
-    fontSize: 16,
+    height: 56,
   },
-  phoneNumberText: {
+  phoneInput: {
+    flex: 1,
+    height: '100%',
+    paddingHorizontal: 12,
+    fontSize: 16,
     color: '#000000',
-    fontSize: 16,
-    height: 54,
-    paddingVertical: 0,
-  },
-  phoneCodeText: {
-    color: '#000000',
-    fontSize: 16,
-  },
-  flagButton: {
-    width: 80,
-    height: 54,
-    borderRightWidth: 1,
-    borderRightColor: '#E0E0E0',
-    backgroundColor: '#FFFFFF',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  countryPickerButton: {
-    width: 80,
-    height: 54,
-    alignItems: 'center',
-    justifyContent: 'center',
   },
   referralInput: {
     borderWidth: 1,
@@ -361,6 +312,7 @@ const styles = StyleSheet.create({
   termsText: {
     color: '#666',
     fontSize: 14,
+    flex: 1,
   },
   termsLink: {
     color: '#8A2BE2',
@@ -384,6 +336,9 @@ const styles = StyleSheet.create({
   },
   signUpButtonDisabled: {
     opacity: 0.5,
+  },
+  signUpButtonLoading: {
+    backgroundColor: '#9B59B6',
   },
   signUpButtonText: {
     color: '#FFFFFF',
@@ -430,14 +385,9 @@ const styles = StyleSheet.create({
     color: '#8A2BE2',
     fontWeight: '600',
   },
-
-  signUpButtonLoading: {
-    backgroundColor: '#9B59B6',
-  },
   errorText: {
-    color: 'red',
-    fontSize: 14,
-    marginTop: 5,
-    textAlign: 'center',
+    color: '#FF0000',
+    fontSize: 12,
+    marginTop: 4,
   },
 });

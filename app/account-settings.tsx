@@ -1,11 +1,14 @@
-import { View, Text, Pressable, StyleSheet } from "react-native";
+import React from 'react';
+import { StyleSheet } from 'react-native';
+import { View } from 'react-native';
+import { Text } from 'react-native';
+import { Pressable } from 'react-native';
 import { router } from "expo-router";
 import { Ionicons } from '@expo/vector-icons';
 
 export default function AccountSettingsScreen() {
   return (
     <View style={styles.container}>
-      {/* Header */}
       <View style={styles.header}>
         <Pressable 
           style={styles.backButton}
@@ -14,11 +17,8 @@ export default function AccountSettingsScreen() {
           <Ionicons name="arrow-back" size={24} color="#000" />
         </Pressable>
         <Text style={styles.title}>Account Settings</Text>
-        <View style={styles.placeholder} /> {/* For header alignment */}
+        <View style={styles.placeholder} />
       </View>
-
-      {/* Settings content will go here */}
-      {/* You can add more content as needed */}
     </View>
   );
 }

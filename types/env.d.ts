@@ -1,0 +1,22 @@
+/// <reference types="react" />
+/// <reference types="react-native" />
+
+declare module "*.png" {
+    const value: any;
+    export = value;
+  }
+  
+  declare module "*.jpg" {
+    const value: any;
+    export = value;
+  }
+  
+  declare module "*.json" {
+    const value: any;
+    export = value;
+  }
+  
+  declare module "*.ttf" {
+    const value: any;
+    export = value;
+  }

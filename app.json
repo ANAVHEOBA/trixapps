@@ -7,44 +7,59 @@
     "icon": "./assets/images/icon.png",
     "scheme": "myapp",
     "userInterfaceStyle": "automatic",
-    "newArchEnabled": true,
+    "splash": {
+      "image": "./assets/images/splash-icon.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#ffffff"
+    },
+    "assetBundlePatterns": [
+      "**/*"
+    ],
     "ios": {
-      "supportsTablet": true
+      "supportsTablet": true,
+      "bundleIdentifier": "com.yourcompany.trixapps"
     },
     "android": {
       "adaptiveIcon": {
         "foregroundImage": "./assets/images/adaptive-icon.png",
         "backgroundColor": "#ffffff"
       },
-      "package": "com.anavheoba17.Trixapps"
-    },
-    "web": {
-      "bundler": "metro",
-      "output": "static",
-      "favicon": "./assets/images/favicon.png"
+      "package": "com.yourcompany.trixapps"
     },
     "plugins": [
       "expo-router",
+      "@react-native-community/datetimepicker",
       [
-        "expo-splash-screen",
+        "expo-font",
         {
-          "image": "./assets/images/splash-icon.png",
-          "imageWidth": 200,
-          "resizeMode": "contain",
-          "backgroundColor": "#ffffff"
+          "fonts": [
+            "@expo/vector-icons/build/vendor/react-native-vector-icons/Fonts/AntDesign.ttf",
+            "@expo/vector-icons/build/vendor/react-native-vector-icons/Fonts/Entypo.ttf",
+            "@expo/vector-icons/build/vendor/react-native-vector-icons/Fonts/EvilIcons.ttf",
+            "@expo/vector-icons/build/vendor/react-native-vector-icons/Fonts/Feather.ttf",
+            "@expo/vector-icons/build/vendor/react-native-vector-icons/Fonts/FontAwesome.ttf",
+            "@expo/vector-icons/build/vendor/react-native-vector-icons/Fonts/FontAwesome5_Brands.ttf",
+            "@expo/vector-icons/build/vendor/react-native-vector-icons/Fonts/FontAwesome5_Regular.ttf",
+            "@expo/vector-icons/build/vendor/react-native-vector-icons/Fonts/FontAwesome5_Solid.ttf",
+            "@expo/vector-icons/build/vendor/react-native-vector-icons/Fonts/Fontisto.ttf",
+            "@expo/vector-icons/build/vendor/react-native-vector-icons/Fonts/Foundation.ttf",
+            "@expo/vector-icons/build/vendor/react-native-vector-icons/Fonts/Ionicons.ttf",
+            "@expo/vector-icons/build/vendor/react-native-vector-icons/Fonts/MaterialCommunityIcons.ttf",
+            "@expo/vector-icons/build/vendor/react-native-vector-icons/Fonts/MaterialIcons.ttf",
+            "@expo/vector-icons/build/vendor/react-native-vector-icons/Fonts/Octicons.ttf",
+            "@expo/vector-icons/build/vendor/react-native-vector-icons/Fonts/SimpleLineIcons.ttf",
+            "@expo/vector-icons/build/vendor/react-native-vector-icons/Fonts/Zocial.ttf"
+          ]
         }
       ]
     ],
+    "web": {
+      "bundler": "metro",
+      "favicon": "./assets/images/favicon.png"
+    },
     "experiments": {
       "typedRoutes": true
     },
-    "extra": {
-      "router": {
-        "origin": false
-      },
-      "eas": {
-        "projectId": "d5bee227-0c74-474f-882e-0931bd32c73b"
-      }
-    }
+    "sdkVersion": "52.0.0"
   }
 }
