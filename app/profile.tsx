@@ -1,20 +1,165 @@
-import { View, Text, TextInput, Pressable, StyleSheet } from "react-native";
-import { router } from "expo-router";
-import { useState } from "react";
+import { View, Text, TextInput, Pressable, StyleSheet, Alert } from "react-native";
+import { router, useLocalSearchParams } from "expo-router";
+import { useState, useEffect } from "react";
 import DateTimePicker from '@react-native-community/datetimepicker';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+
+// API Configuration
+const API_URL = 'http://192.168.241.236:8000/api';
 
 export default function ProfileScreen() {
+  const params = useLocalSearchParams();
+  const { phone, countryCode } = params;
+
   const [fullName, setFullName] = useState('');
   const [email, setEmail] = useState('');
   const [gender, setGender] = useState('');
   const [dob, setDob] = useState('');
   const [showDatePicker, setShowDatePicker] = useState(false);
   const [showGenderDropdown, setShowGenderDropdown] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
+  const [token, setToken] = useState<string | null>(null);
+
+  useEffect(() => {
+    getToken();
+    getProfile();
+  }, []);
+
+  // Get token from storage
+  const getToken = async () => {
+    try {
+      const storedToken = await AsyncStorage.getItem('userToken');
+      setToken(storedToken);
+    } catch (error) {
+      console.error('Error getting token:', error);
+    }
+  };
+
+  // Get existing profile if any
+  const getProfile = async () => {
+    try {
+      const token = await AsyncStorage.getItem('userToken');
+      if (!token) return;
+
+      const response = await fetch(`${API_URL}/auth/profile`, {
+        method: 'GET',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+      });
+
+      const data = await response.json();
+
+      if (response.ok && data.success) {
+        setFullName(data.data.fullName || '');
+        setEmail(data.data.email || '');
+        setGender(data.data.gender || '');
+        if (data.data.dob) {
+          // Convert YYYY-MM-DD to DD/MM/YYYY if needed
+          const [year, month, day] = data.data.dob.split('-');
+          setDob(`${day}/${month}/${year}`);
+        }
+      }
+    } catch (error) {
+      console.error('Error fetching profile:', error);
+    }
+  };
+
+  // Format date to DD/MM/YYYY
+  const formatDate = (date: Date): string => {
+    const day = String(date.getDate()).padStart(2, '0');
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const year = date.getFullYear();
+    return `${day}/${month}/${year}`;
+  };
+
+  // Parse DD/MM/YYYY string to Date
+  const parseDate = (dateString: string): Date | null => {
+    if (!dateString) return null;
+    const [day, month, year] = dateString.split('/').map(Number);
+    return new Date(year, month - 1, day);
+  };
+
+  // Validate date format and range
+  const validateDate = (dateString: string): boolean => {
+    if (!dateString) return false;
+    
+    // Check format
+    const regex = /^\d{2}\/\d{2}\/\d{4}$/;
+    if (!regex.test(dateString)) return false;
+
+    // Parse date
+    const [day, month, year] = dateString.split('/').map(Number);
+    const date = new Date(year, month - 1, day);
+
+    // Check if valid date and not in future
+    return date instanceof Date && 
+           !isNaN(date.getTime()) && 
+           date <= new Date() &&
+           year >= 1900;
+  };
 
   const handleDateChange = (event: any, selectedDate?: Date) => {
     setShowDatePicker(false);
     if (selectedDate) {
-      setDob(selectedDate.toLocaleDateString());
+      const formattedDate = formatDate(selectedDate);
+      setDob(formattedDate);
+    }
+  };
+
+  // Format date for display
+  const formatDisplayDate = (dateString: string): string => {
+    if (!dateString) return '';
+    
+    const [day, month, year] = dateString.split('/');
+    const months = [
+      'January', 'February', 'March', 'April', 'May', 'June',
+      'July', 'August', 'September', 'October', 'November', 'December'
+    ];
+    
+    return `${parseInt(day)} ${months[parseInt(month) - 1]} ${year}`;
+  };
+
+  // Update profile
+  const updateProfile = async () => {
+    try {
+      if (!validateDate(dob)) {
+        Alert.alert('Error', 'Please enter a valid date of birth');
+        return;
+      }
+
+      setIsLoading(true);
+
+      const response = await fetch(`${API_URL}/auth/complete-profile`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          fullName,
+          email,
+          gender,
+          dob,
+          phone,
+          countryCode
+        }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.message || 'Failed to update profile');
+      }
+
+      await AsyncStorage.setItem('userData', JSON.stringify(data.data));
+      router.push("/category");
+
+    } catch (error: any) {
+      Alert.alert('Error', error.message || 'Failed to update profile');
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -87,17 +232,18 @@ export default function ProfileScreen() {
           onPress={() => setShowDatePicker(true)}
         >
           <Text style={dob ? styles.inputText : styles.placeholder}>
-            {dob || 'Enter DOB'}
+            {dob ? formatDisplayDate(dob) : 'Enter DOB'}
           </Text>
           <Text style={styles.calendarIcon}>📅</Text>
         </Pressable>
 
         {showDatePicker && (
           <DateTimePicker
-            value={new Date()}
+            value={dob ? parseDate(dob) || new Date() : new Date()}
             mode="date"
             display="default"
             onChange={handleDateChange}
+            maximumDate={new Date()}
           />
         )}
       </View>
@@ -119,12 +265,15 @@ export default function ProfileScreen() {
       <Pressable 
         style={[
           styles.confirmButton,
-          (!fullName || !email || !gender || !dob) && styles.confirmButtonDisabled
+          ((!fullName || !email || !gender || !dob) || isLoading) && 
+          styles.confirmButtonDisabled
         ]}
-        onPress={() => router.push("/category")}
-        disabled={!fullName || !email || !gender || !dob}
+        onPress={updateProfile}
+        disabled={!fullName || !email || !gender || !dob || isLoading}
       >
-        <Text style={styles.confirmButtonText}>Confirm</Text>
+        <Text style={styles.confirmButtonText}>
+          {isLoading ? 'Updating...' : 'Confirm'}
+        </Text>
       </Pressable>
 
       {/* Sign In Link */}
@@ -134,6 +283,8 @@ export default function ProfileScreen() {
     </View>
   );
 }
+
+
 
 const styles = StyleSheet.create({
   container: {

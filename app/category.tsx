@@ -1,16 +1,63 @@
-import { View, Text, Pressable, TextInput, StyleSheet } from "react-native";
-import { router } from "expo-router";
+import { View, Text, Pressable, TextInput, StyleSheet, Alert } from "react-native";
+import { router, useLocalSearchParams } from "expo-router";
 import { useState } from "react";
+import AsyncStorage from '@react-native-async-storage/async-storage';
+
+const API_URL = 'http://192.168.241.236:8000/api';
 
 type Category = "reward" | "games" | "casual" | "other";
 
 export default function CategoryScreen() {
   const [selectedCategory, setSelectedCategory] = useState<Category | null>(null);
   const [otherText, setOtherText] = useState("");
+  const [isLoading, setIsLoading] = useState(false);
+  const params = useLocalSearchParams();
 
-  const handleConfirm = () => {
-    if (selectedCategory || (selectedCategory === "other" && otherText)) {
-      router.push("/signin-details");
+  const handleConfirm = async () => {
+    if (!selectedCategory || (selectedCategory === "other" && !otherText)) {
+      return;
+    }
+
+    setIsLoading(true);
+
+    try {
+      // Get the token from AsyncStorage
+      const token = await AsyncStorage.getItem('userToken');
+      
+      if (!token) {
+        Alert.alert('Error', 'Authentication token not found');
+        return;
+      }
+
+      const response = await fetch(`${API_URL}/auth/update-category`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Accept': 'application/json',
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          category: selectedCategory,
+          other_category: selectedCategory === 'other' ? otherText : null
+        }),
+      });
+
+      const data = await response.json();
+
+      if (data.success) {
+        // Store user data if needed
+        await AsyncStorage.setItem('userData', JSON.stringify(data.data.user));
+        
+        // Navigate to next screen
+        router.push("/signin-details");
+      } else {
+        Alert.alert('Error', data.message || 'Failed to update category');
+      }
+    } catch (error) {
+      Alert.alert('Error', 'An error occurred while updating category');
+      console.error('Category update error:', error);
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -106,13 +153,15 @@ export default function CategoryScreen() {
       <Pressable 
         style={[
           styles.confirmButton,
-          (!selectedCategory || (selectedCategory === "other" && !otherText)) && 
+          (!selectedCategory || (selectedCategory === "other" && !otherText) || isLoading) && 
           styles.confirmButtonDisabled
         ]}
         onPress={handleConfirm}
-        disabled={!selectedCategory || (selectedCategory === "other" && !otherText)}
+        disabled={!selectedCategory || (selectedCategory === "other" && !otherText) || isLoading}
       >
-        <Text style={styles.confirmButtonText}>Confirm</Text>
+        <Text style={styles.confirmButtonText}>
+          {isLoading ? 'Updating...' : 'Confirm'}
+        </Text>
       </Pressable>
 
       {/* Sign In Link */}
@@ -122,6 +171,7 @@ export default function CategoryScreen() {
     </View>
   );
 }
+
 
 const styles = StyleSheet.create({
   container: {
