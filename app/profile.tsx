@@ -3,6 +3,8 @@ import { router, useLocalSearchParams } from "expo-router";
 import { useState, useEffect } from "react";
 import DateTimePicker from '@react-native-community/datetimepicker';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { ApiClient } from './utilities/apiClient';
+import { TokenManager } from './utilities/tokenManager';
 
 // API Configuration
 const API_URL = 'http://192.168.241.236:8000/api';
@@ -21,43 +23,21 @@ export default function ProfileScreen() {
   const [token, setToken] = useState<string | null>(null);
 
   useEffect(() => {
-    getToken();
     getProfile();
   }, []);
-
-  // Get token from storage
-  const getToken = async () => {
-    try {
-      const storedToken = await AsyncStorage.getItem('userToken');
-      setToken(storedToken);
-    } catch (error) {
-      console.error('Error getting token:', error);
-    }
-  };
 
   // Get existing profile if any
   const getProfile = async () => {
     try {
-      const token = await AsyncStorage.getItem('userToken');
-      if (!token) return;
-
-      const response = await fetch(`${API_URL}/auth/profile`, {
-        method: 'GET',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json',
-        },
-      });
-
-      const data = await response.json();
-
-      if (response.ok && data.success) {
-        setFullName(data.data.fullName || '');
-        setEmail(data.data.email || '');
-        setGender(data.data.gender || '');
-        if (data.data.dob) {
+      const response = await ApiClient.get('/auth/profile');
+      
+      if (response.success) {
+        setFullName(response.data.fullName || '');
+        setEmail(response.data.email || '');
+        setGender(response.data.gender || '');
+        if (response.data.dob) {
           // Convert YYYY-MM-DD to DD/MM/YYYY if needed
-          const [year, month, day] = data.data.dob.split('-');
+          const [year, month, day] = response.data.dob.split('-');
           setDob(`${day}/${month}/${year}`);
         }
       }
@@ -131,30 +111,26 @@ export default function ProfileScreen() {
 
       setIsLoading(true);
 
-      const response = await fetch(`${API_URL}/auth/complete-profile`, {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          fullName,
-          email,
-          gender,
-          dob,
-          phone,
-          countryCode
-        }),
+      const response = await ApiClient.post('/auth/complete-profile', {
+        fullName,
+        email,
+        gender,
+        dob,
+        phone,
+        countryCode
       });
 
-      const data = await response.json();
-
-      if (!response.ok) {
-        throw new Error(data.message || 'Failed to update profile');
+      if (response.success) {
+        // Store the token
+        await TokenManager.setToken(response.data.token);
+        
+        // Store user data
+        await TokenManager.setUserData(response.data.user);
+        
+        router.push("/category");
+      } else {
+        throw new Error(response.message || 'Failed to update profile');
       }
-
-      await AsyncStorage.setItem('userData', JSON.stringify(data.data));
-      router.push("/category");
 
     } catch (error: any) {
       Alert.alert('Error', error.message || 'Failed to update profile');

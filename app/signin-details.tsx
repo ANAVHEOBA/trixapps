@@ -1,7 +1,9 @@
-import { View, Text, TextInput, Pressable, StyleSheet } from "react-native";
+import { View, Text, TextInput, Pressable, StyleSheet, Alert } from "react-native";
 import { router } from "expo-router";
 import { useState } from "react";
 import { Ionicons } from '@expo/vector-icons';
+import { ApiClient } from './utilities/apiClient';
+import { TokenManager } from './utilities/tokenManager';
 
 export default function SignInDetailsScreen() {
   const [username, setUsername] = useState('');
@@ -10,6 +12,7 @@ export default function SignInDetailsScreen() {
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [rememberMe, setRememberMe] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
 
   const isFormValid = () => {
     return (
@@ -18,6 +21,59 @@ export default function SignInDetailsScreen() {
       password === confirmPassword
     );
   };
+
+
+  const handleConfirm = async () => {
+    if (!isFormValid()) return;
+
+    setIsLoading(true);
+    try {
+      const response = await ApiClient.post('/auth/complete-signin-details', {
+        username,
+        password,
+        remember_me: rememberMe
+      });
+
+      if (response.success) {
+        // Update token if new one is provided
+        if (response.data.token) {
+          await TokenManager.setToken(response.data.token);
+        }
+        
+        // Update user data
+        if (response.data.user) {
+          await TokenManager.setUserData(response.data.user);
+        }
+
+        // Show success alert
+        Alert.alert(
+          'Success',
+          'Account created successfully!',
+          [
+            {
+              text: 'OK',
+              onPress: () => router.push("/signins")
+            }
+          ],
+          { cancelable: false }
+        );
+      } else {
+        Alert.alert(
+          'Error',
+          response.message || 'Failed to update sign-in details'
+        );
+      }
+    } catch (error: any) {
+      console.error('Sign-in details error:', error);
+      Alert.alert(
+        'Error',
+        error.response?.data?.message || 
+        'An error occurred while updating sign-in details'
+      );
+    } finally {
+      setIsLoading(false);
+    }
+};
 
   return (
     <View style={styles.container}>
@@ -117,15 +173,17 @@ export default function SignInDetailsScreen() {
 
       {/* Confirm Button */}
       <Pressable 
-        style={[
-          styles.confirmButton,
-          !isFormValid() && styles.confirmButtonDisabled
-        ]}
-        onPress={() => router.push("/success")}
-        disabled={!isFormValid()}
-      >
-        <Text style={styles.confirmButtonText}>Confirm</Text>
-      </Pressable>
+    style={[
+      styles.confirmButton,
+      (!isFormValid() || isLoading) && styles.confirmButtonDisabled
+    ]}
+    onPress={handleConfirm}
+    disabled={!isFormValid() || isLoading}
+  >
+    <Text style={styles.confirmButtonText}>
+      {isLoading ? 'Updating...' : 'Confirm'}
+    </Text>
+  </Pressable>
 
       {/* Sign In Link */}
       <Text style={styles.signInText}>

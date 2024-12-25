@@ -1,9 +1,8 @@
 import { View, Text, Pressable, TextInput, StyleSheet, Alert } from "react-native";
-import { router, useLocalSearchParams } from "expo-router";
+import { router } from "expo-router";
 import { useState } from "react";
-import AsyncStorage from '@react-native-async-storage/async-storage';
-
-const API_URL = 'http://192.168.241.236:8000/api';
+import { ApiClient } from './utilities/apiClient';
+import { TokenManager } from './utilities/tokenManager';
 
 type Category = "reward" | "games" | "casual" | "other";
 
@@ -11,7 +10,6 @@ export default function CategoryScreen() {
   const [selectedCategory, setSelectedCategory] = useState<Category | null>(null);
   const [otherText, setOtherText] = useState("");
   const [isLoading, setIsLoading] = useState(false);
-  const params = useLocalSearchParams();
 
   const handleConfirm = async () => {
     if (!selectedCategory || (selectedCategory === "other" && !otherText)) {
@@ -21,45 +19,43 @@ export default function CategoryScreen() {
     setIsLoading(true);
 
     try {
-      // Get the token from AsyncStorage
-      const token = await AsyncStorage.getItem('userToken');
-      
-      if (!token) {
-        Alert.alert('Error', 'Authentication token not found');
-        return;
-      }
-
-      const response = await fetch(`${API_URL}/auth/update-category`, {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Accept': 'application/json',
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          category: selectedCategory,
-          other_category: selectedCategory === 'other' ? otherText : null
-        }),
+      const response = await ApiClient.post('/auth/update-category', {
+        category: selectedCategory,
+        other_category: selectedCategory === 'other' ? otherText : null
       });
 
-      const data = await response.json();
-
-      if (data.success) {
-        // Store user data if needed
-        await AsyncStorage.setItem('userData', JSON.stringify(data.data.user));
+      if (response.success) {
+        // Store updated user data
+        await TokenManager.setUserData(response.data.user);
         
         // Navigate to next screen
         router.push("/signin-details");
       } else {
-        Alert.alert('Error', data.message || 'Failed to update category');
+        Alert.alert('Error', response.message || 'Failed to update category');
       }
-    } catch (error) {
+    } catch (error: any) {
       Alert.alert('Error', 'An error occurred while updating category');
       console.error('Category update error:', error);
     } finally {
       setIsLoading(false);
     }
   };
+
+  const CategoryButton = ({ category, label }: { category: Category, label: string }) => (
+    <Pressable 
+      style={[
+        styles.categoryButton,
+        selectedCategory === category && styles.categoryButtonSelected
+      ]}
+      onPress={() => setSelectedCategory(category)}
+    >
+      <Text style={styles.categoryText}>{label}</Text>
+      <View style={[
+        styles.checkbox,
+        selectedCategory === category && styles.checkboxSelected
+      ]} />
+    </Pressable>
+  );
 
   return (
     <View style={styles.container}>
@@ -80,47 +76,20 @@ export default function CategoryScreen() {
 
       {/* Category Options */}
       <View style={styles.categoryContainer}>
-        <Pressable 
-          style={[
-            styles.categoryButton,
-            selectedCategory === "reward" && styles.categoryButtonSelected
-          ]}
-          onPress={() => setSelectedCategory("reward")}
-        >
-          <Text style={styles.categoryText}>I'm a Reward Seeker</Text>
-          <View style={[
-            styles.checkbox,
-            selectedCategory === "reward" && styles.checkboxSelected
-          ]} />
-        </Pressable>
+        <CategoryButton 
+          category="reward" 
+          label="I'm a Reward Seeker" 
+        />
 
-        <Pressable 
-          style={[
-            styles.categoryButton,
-            selectedCategory === "games" && styles.categoryButtonSelected
-          ]}
-          onPress={() => setSelectedCategory("games")}
-        >
-          <Text style={styles.categoryText}>I'm a Games/Tech Enthusiast</Text>
-          <View style={[
-            styles.checkbox,
-            selectedCategory === "games" && styles.checkboxSelected
-          ]} />
-        </Pressable>
+        <CategoryButton 
+          category="games" 
+          label="I'm a Games/Tech Enthusiast" 
+        />
 
-        <Pressable 
-          style={[
-            styles.categoryButton,
-            selectedCategory === "casual" && styles.categoryButtonSelected
-          ]}
-          onPress={() => setSelectedCategory("casual")}
-        >
-          <Text style={styles.categoryText}>I'm a Casual Shopper</Text>
-          <View style={[
-            styles.checkbox,
-            selectedCategory === "casual" && styles.checkboxSelected
-          ]} />
-        </Pressable>
+        <CategoryButton 
+          category="casual" 
+          label="I'm a Casual Shopper" 
+        />
 
         <View style={styles.otherContainer}>
           <Text style={styles.otherLabel}>Others</Text>
@@ -171,6 +140,8 @@ export default function CategoryScreen() {
     </View>
   );
 }
+
+
 
 
 const styles = StyleSheet.create({
