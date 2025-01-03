@@ -251,7 +251,7 @@ export default function SignUpScreen() {
             Already have an Account? {' '}
             <Text 
               style={styles.signInLink}
-              onPress={() => router.push("/signin")}
+              onPress={() => router.push("/signins")}
             >
               Sign In
             </Text>
