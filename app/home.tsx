@@ -3,7 +3,7 @@ import { router } from "expo-router";
 import { useState, useEffect } from "react";
 import { TokenManager } from './utilities/tokenManager';
 import { ApiClient } from './utilities/apiClient';
-import { Ionicons } from '@expo/vector-icons';
+import { MaterialCommunityIcons, Ionicons, FontAwesome5 } from '@expo/vector-icons';
 
 // Default images
 const DEFAULT_AVATAR = require("../assets/default-avatar.png");
@@ -27,6 +27,70 @@ interface DigitalService {
   icon: string | null;
   category: string;
 }
+
+interface ServiceItem {
+  id: string;
+  name: string;
+  icon: React.ReactNode;
+  color: string;
+}
+
+
+const serviceItems: ServiceItem[] = [
+  {
+    id: '1',
+    name: 'Airtime',
+    icon: <MaterialCommunityIcons name="phone" size={24} color="#FFF" />,
+    color: '#4285F4'
+  },
+  {
+    id: '2',
+    name: 'Data',
+    icon: <MaterialCommunityIcons name="arrow-up-down" size={24} color="#FFF" />,
+    color: '#34A853'
+  },
+  {
+    id: '3',
+    name: 'Betting Fund',
+    icon: <MaterialCommunityIcons name="soccer" size={24} color="#FFF" />,
+    color: '#34A853'
+  },
+  {
+    id: '4',
+    name: 'Electricity',
+    icon: <MaterialCommunityIcons name="flash" size={24} color="#FFF" />,
+    color: '#34A853'
+  },
+
+  {
+    id: '5',
+    name: 'TV',
+    icon: <MaterialCommunityIcons name="television" size={24} color="#FFF" />,
+    color: '#4285F4'
+  },
+  {
+    id: '6',
+    name: 'Win Big',
+    icon: <MaterialCommunityIcons name="trophy" size={24} color="#FFF" />,
+    color: '#673AB7'
+  },
+  {
+    id: '7',
+    name: 'Refer & Earn',
+    icon: <MaterialCommunityIcons name="gift" size={24} color="#FFF" />,
+    color: '#673AB7'
+  },
+  {
+    id: '8',
+    name: 'ATM Card',
+    icon: <MaterialCommunityIcons name="credit-card" size={24} color="#FFF" />,
+    color: '#673AB7'
+  },
+  // Add more services as needed
+];
+
+
+
 
 export default function HomeScreen() {
   const [balance, setBalance] = useState<number | null>(null);
@@ -172,11 +236,11 @@ const filteredServices = services.filter(service =>
             </Text>
           </View>
           <Pressable 
-            style={styles.addButton}
-            onPress={() => router.push("/add-funds")}
-          >
-            <Text style={styles.addButtonText}>+</Text>
-          </Pressable>
+  style={styles.addButton}
+  onPress={() => router.push("/bank-transfer")} // Changed from "/add-funds" to "/add-from-card"
+>
+  <Text style={styles.addButtonText}>+</Text>
+</Pressable>
         </View>
       </View>
 
@@ -193,6 +257,9 @@ const filteredServices = services.filter(service =>
           <Text style={styles.learnMoreText}>Learn more</Text>
         </Pressable>
       </View>
+
+      {/* Digital Services Section */}
+      
 
       {/* Digital Services Section */}
       <View style={styles.servicesSection}>
@@ -228,23 +295,37 @@ const filteredServices = services.filter(service =>
         </ScrollView>
 
         {/* Service Cards Grid */}
-        <View style={styles.servicesGrid}>
-          {filteredServices.map((service) => (
-            <Pressable 
-              key={service.id}
-              style={styles.serviceCard}
-              onPress={() => router.push(`/services/${service.name.toLowerCase()}`)}
-            >
-              <Image 
-                source={getImageSource(service.icon, DEFAULT_SERVICE_ICON)}
-                style={styles.serviceIcon}
-                resizeMode="contain"
-              />
-            </Pressable>
-          ))}
+        <View style={styles.sectionHeader}>
+          <Text style={styles.sectionTitle}>Services</Text>
+          <Pressable onPress={() => router.push("/services")}>
+            <Text style={styles.moreText}>More</Text>
+            <Ionicons name="chevron-forward" size={24} color="#666" />
+          </Pressable>
         </View>
+
+        <View style={styles.servicesGrid}>
+  {serviceItems.map((item) => (
+    <Pressable
+      key={item.id}
+      style={[styles.serviceItem, { backgroundColor: item.color }]}
+      onPress={() => {
+        if (item.name === 'Airtime') {
+          router.push('/airtime');  // Navigate to dedicated airtime screen
+        } else {
+          router.push(`/services/${item.name.toLowerCase()}`);  // Default navigation for other services
+        }
+      }}
+    >
+      <View style={styles.serviceIconContainer}>
+        {item.icon}
+      </View>
+      <Text style={styles.serviceName}>{item.name}</Text>
+    </Pressable>
+  ))}
+</View>
       </View>
 
+     
       {/* Recent Transactions */}
       <View style={styles.transactionsSection}>
         <View style={styles.sectionHeader}>
@@ -425,24 +506,6 @@ const styles = StyleSheet.create({
   },
 
   // Services Section
-  servicesSection: {
-    backgroundColor: '#FFFFFF',
-    borderTopLeftRadius: 24,
-    borderTopRightRadius: 24,
-    paddingTop: 24,
-  },
-  sectionHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingHorizontal: 16,
-    marginBottom: 16,
-  },
-  sectionTitle: {
-    fontSize: 20,
-    fontWeight: 'bold',
-    color: '#000',
-  },
   filterTabs: {
     marginBottom: 20,
   },
@@ -465,13 +528,6 @@ const styles = StyleSheet.create({
   },
   activeFilterText: {
     color: '#FFFFFF',
-  },
-  servicesGrid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    justifyContent: 'space-between',
-    paddingHorizontal: 16,
-    gap: 12,
   },
   serviceCard: {
     width: '23%',
@@ -551,5 +607,57 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     backgroundColor: '#8A2BE2',
+  },
+
+  servicesSection: {
+    backgroundColor: '#FFFFFF',
+    padding: 16,
+  },
+  sectionHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 16,
+  },
+  sectionTitle: {
+    fontSize: 24,
+    fontWeight: 'bold',
+    color: '#000',
+  },
+  moreText: {
+    color: '#666',
+    fontSize: 16,
+  },
+  servicesGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    justifyContent: 'space-between',
+    paddingHorizontal: 8, // Add padding to align with edges
+  },
+
+  serviceItem: {
+    width: '23%', // Slightly adjust width for better spacing
+    aspectRatio: 1,
+    borderRadius: 12,
+    marginBottom: 20, // Increase bottom margin
+    padding: 8, // Reduce padding
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  serviceName: {
+    color: '#FFF',
+    fontSize: 10, // Smaller font size
+    textAlign: 'center',
+    fontWeight: '500',
+    marginTop: 4, // Add small top margin
+  },
+  serviceIconContainer: {
+    width: 32, // Fixed width for icon container
+    height: 32, // Fixed height for icon container
+    borderRadius: 16,
+    backgroundColor: 'rgba(255,255,255,0.2)', // Add slight background
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 6, // Reduce space between icon and text
   },
 });
