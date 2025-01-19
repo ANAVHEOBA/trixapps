@@ -7,7 +7,7 @@ import { ApiClient } from './utilities/apiClient';
 import { TokenManager } from './utilities/tokenManager';
 
 // API Configuration
-const API_URL = 'http://192.168.241.236:8000/api';
+const API_URL = 'http://192.168.211.236:8000/api';
 
 export default function ProfileScreen() {
   const params = useLocalSearchParams();
