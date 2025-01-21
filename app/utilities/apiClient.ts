@@ -1,6 +1,6 @@
 import { TokenManager } from './tokenManager';
 
-const API_URL = 'http://192.168.211.236:8001/api';
+const API_URL = 'http://192.168.172.236:8001/api';
 
 export const ApiClient = {
   async handleResponse(response: Response) {

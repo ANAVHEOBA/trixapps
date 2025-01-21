@@ -25,7 +25,7 @@ export default function SignInDetailsScreen() {
 
   const handleConfirm = async () => {
     if (!isFormValid()) return;
-
+  
     setIsLoading(true);
     try {
       const response = await ApiClient.post('/auth/complete-signin-details', {
@@ -33,7 +33,7 @@ export default function SignInDetailsScreen() {
         password,
         remember_me: rememberMe
       });
-
+  
       if (response.success) {
         // Update token if new one is provided
         if (response.data.token) {
@@ -44,15 +44,15 @@ export default function SignInDetailsScreen() {
         if (response.data.user) {
           await TokenManager.setUserData(response.data.user);
         }
-
-        // Show success alert
+  
+        // Show success alert and navigate to secure passcode screen
         Alert.alert(
           'Success',
-          'Account created successfully!',
+          'Account created successfully! Please set up your wallet PIN.',
           [
             {
               text: 'OK',
-              onPress: () => router.push("/signins")
+              onPress: () => router.push("/secure-passcode") // Navigate to secure passcode screen
             }
           ],
           { cancelable: false }
@@ -73,8 +73,9 @@ export default function SignInDetailsScreen() {
     } finally {
       setIsLoading(false);
     }
-};
+  };
 
+  
   return (
     <View style={styles.container}>
       {/* Back Button */}

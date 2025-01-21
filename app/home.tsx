@@ -1,350 +1,479 @@
 import { View, Text, StyleSheet, Image, Pressable, ScrollView, ActivityIndicator } from "react-native";
 import { router } from "expo-router";
 import { useState, useEffect } from "react";
-import { TokenManager } from './utilities/tokenManager';
-import { ApiClient } from './utilities/apiClient';
-import { MaterialCommunityIcons, Ionicons, FontAwesome5 } from '@expo/vector-icons';
+import { MaterialCommunityIcons, Ionicons } from '@expo/vector-icons';
 
-// Default images
-const DEFAULT_AVATAR = require("../assets/default-avatar.png");
-const WALLET_ICON = require("../assets/wallet-icon.png");
-const DEFAULT_SERVICE_ICON = require("../assets/default-service-icon.png");
-const DEFAULT_TRANSACTION_ICON = require("../assets/default-transaction-icon.png");
-const NAIRA_ICON = require("../assets/naira-icon.png");
-
-interface Transaction {
-  id: string;
-  title: string;
-  amount: number;
-  date: string;
-  status: string;
-  icon: string | null;
-}
-
-interface DigitalService {
-  id: string;
-  name: string;
-  icon: string | null;
-  category: string;
-}
-
-interface ServiceItem {
-  id: string;
-  name: string;
-  icon: React.ReactNode;
-  color: string;
-}
-
-
-const serviceItems: ServiceItem[] = [
-  {
-    id: '1',
-    name: 'Airtime',
-    icon: <MaterialCommunityIcons name="phone" size={24} color="#FFF" />,
-    color: '#4285F4'
+// Constants
+const PROVIDERS = [
+  { 
+    id: '1', 
+    name: 'Airtel', 
+    logo: require('../assets/networks/airtel.png'),
+    backgroundColor: '#FF0000' // Airtel red
   },
-  {
-    id: '2',
-    name: 'Data',
-    icon: <MaterialCommunityIcons name="arrow-up-down" size={24} color="#FFF" />,
-    color: '#34A853'
+  { 
+    id: '2', 
+    name: 'MTN', 
+    logo: require('../assets/networks/mtn.png'),
+    backgroundColor: '#FFD700' // MTN yellow
   },
-  {
-    id: '3',
-    name: 'Betting Fund',
-    icon: <MaterialCommunityIcons name="soccer" size={24} color="#FFF" />,
-    color: '#34A853'
+  { 
+    id: '3', 
+    name: 'Glo', 
+    logo: require('../assets/networks/glo.png'),
+    backgroundColor: '#008000' // Glo green
   },
-  {
-    id: '4',
-    name: 'Electricity',
-    icon: <MaterialCommunityIcons name="flash" size={24} color="#FFF" />,
-    color: '#34A853'
+  { 
+    id: '4', 
+    name: '9mobile', 
+    logo: require('../assets/networks/9mobile.png'),
+    backgroundColor: '#006400' // 9mobile dark green
   },
+
 
   {
     id: '5',
-    name: 'TV',
-    icon: <MaterialCommunityIcons name="television" size={24} color="#FFF" />,
-    color: '#4285F4'
+    name: 'Betting',
+    logo: require('../assets/services/betting.png'),
+    backgroundColor: '#4CAF50' // Green
   },
   {
     id: '6',
-    name: 'Win Big',
-    icon: <MaterialCommunityIcons name="trophy" size={24} color="#FFF" />,
-    color: '#673AB7'
+    name: 'Electricity',
+    logo: require('../assets/services/electricity.png'),
+    backgroundColor: '#FFC107' // Amber
   },
   {
     id: '7',
-    name: 'Refer & Earn',
-    icon: <MaterialCommunityIcons name="gift" size={24} color="#FFF" />,
-    color: '#673AB7'
+    name: 'DSTV',
+    logo: require('../assets/services/dstv.png'),
+    backgroundColor: '#2196F3' // Blue
   },
   {
     id: '8',
-    name: 'ATM Card',
-    icon: <MaterialCommunityIcons name="credit-card" size={24} color="#FFF" />,
-    color: '#673AB7'
+    name: 'GOtv',
+    logo: require('../assets/services/gotv.png'),
+    backgroundColor: '#3F51B5' // Indigo
   },
-  // Add more services as needed
+
+
+  {
+    id: '9',
+    name: 'StarTimes',
+    logo: require('../assets/services/startimes.png'),
+    backgroundColor: '#E91E63' // Pink
+  },
+  {
+    id: '10',
+    name: 'WAEC',
+    logo: require('../assets/services/waec.png'),
+    backgroundColor: '#9C27B0' // Purple
+  }
 ];
 
 
+const TABS = [
+  'All', 
+  'Subscriptions', 
+  'Gift Cards', 
+  'Recharge Card',
+  'Betting',
+  'Utilities',
+  'Cable TV'
+];
 
+interface Transaction {
+  id: string;
+  icon: any;
+  title: string;
+  date: string;
+  amount: number;
+  status: 'Completed' | 'Pending';
+}
 
 export default function HomeScreen() {
-  const [balance, setBalance] = useState<number | null>(null);
-  const [userData, setUserData] = useState<any>(null);
-  const [transactions, setTransactions] = useState<Transaction[]>([]);
-  const [services, setServices] = useState<DigitalService[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
-  const [activeFilter, setActiveFilter] = useState('All');
+  const [balance, setBalance] = useState(12000);
   const [showBalance, setShowBalance] = useState(true);
-
-
-
-  // Add these functions after your state declarations and before the useEffect
-
-const getImageSource = (uri: string | null, defaultImage: any) => {
-  if (!uri) return defaultImage;
-  try {
-    return { uri };
-  } catch (error) {
-    return defaultImage;
-  }
-};
-
-const loadInitialData = async () => {
-  try {
-    setIsLoading(true);
-    await Promise.all([
-      loadUserData(),
-      loadBalance(),
-      loadTransactions(),
-      loadDigitalServices()
-    ]);
-  } catch (error) {
-    console.error('Error loading initial data:', error);
-  } finally {
-    setIsLoading(false);
-  }
-};
-
-const loadUserData = async () => {
-  try {
-    const user = await TokenManager.getUserData();
-    setUserData(user);
-  } catch (error) {
-    console.error('Error loading user data:', error);
-  }
-};
-
-const loadBalance = async () => {
-  try {
-    const response = await ApiClient.get('/wallet/balance');
-    if (response.success) {
-      setBalance(parseFloat(response.data.balance));
+  const [activeTab, setActiveTab] = useState('All');
+  const [transactions] = useState<Transaction[]>([
+    {
+      id: '1',
+      icon: require('../assets/twitch-icon.png'),
+      title: 'Product Payment',
+      date: 'Payment Date',
+      amount: -12000,
+      status: 'Completed'
+    },
+    {
+      id: '2',
+      icon: require('../assets/twitch-icon.png'),
+      title: 'Product Payment',
+      date: 'Payment Date',
+      amount: -12000,
+      status: 'Completed'
     }
-  } catch (error) {
-    console.error('Error loading balance:', error);
-  }
-};
+  ]);
 
-const loadTransactions = async () => {
-  try {
-    const response = await ApiClient.get('/transactions/recent');
-    if (response.success) {
-      setTransactions(response.data.transactions);
-    }
-  } catch (error) {
-    console.error('Error loading transactions:', error);
-  }
-};
 
-const loadDigitalServices = async () => {
-  try {
-    const response = await ApiClient.get('/services/digital');
-    if (response.success) {
-      setServices(response.data.services);
-    }
-  } catch (error) {
-    console.error('Error loading digital services:', error);
-  }
-};
+  const styles = StyleSheet.create({
+    container: {
+      flex: 1,
+      backgroundColor: '#8A2BE2',
+    },
+    
+    // Header Styles
+    header: {
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+      alignItems: 'center',
+      paddingHorizontal: 20,
+      paddingTop: 60,
+      paddingBottom: 20,
+    },
+    profilePic: {
+      width: 40,
+      height: 40,
+      borderRadius: 20,
+    },
+    dotIndicator: {
+      flexDirection: 'row',
+      gap: 5,
+    },
+    dot: {
+      width: 6,
+      height: 6,
+      borderRadius: 3,
+      backgroundColor: 'rgba(255, 255, 255, 0.3)',
+    },
+    activeDot: {
+      backgroundColor: '#fff',
+    },
+    walletIconContainer: {
+      width: 40,
+      height: 40,
+      borderRadius: 12,
+      backgroundColor: 'rgba(255, 255, 255, 0.95)',
+      justifyContent: 'center',
+      alignItems: 'center',
+    },
+    walletIcon: {
+      width: 24,
+      height: 24,
+    },
+  
+    // Balance Section
+    balanceWrapper: {
+      alignItems: 'center',
+      paddingVertical: 20,
+    },
+    balanceLabel: {
+      color: '#fff',
+      fontSize: 24,
+      fontWeight: '600',
+      marginBottom: 12,
+    },
+    balanceContainer: {
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+      alignItems: 'center',
+      backgroundColor: '#000000',
+      width: 169,
+      height: 56,
+      borderRadius: 28,
+      paddingHorizontal: 8,
+    },
+    balanceLeft: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 8,
+    },
+    coinIcon: {
+      width: 28,
+      height: 28,
+    },
+    balanceText: {
+      color: '#fff',
+      fontSize: 16,
+      fontWeight: '500',
+    },
+    addButton: {
+      width: 28,
+      height: 28,
+      backgroundColor: '#333333',
+      borderRadius: 14,
+      justifyContent: 'center',
+      alignItems: 'center',
+    },
+    addButtonText: {
+      color: '#fff',
+      fontSize: 20,
+      fontWeight: '500',
+    },
+  
+    // Main Container
+    mainContainer: {
+      flex: 1,
+      backgroundColor: '#fff',
+      borderTopLeftRadius: 30,
+      borderTopRightRadius: 30,
+      marginTop: 20,
+      paddingBottom: 100, // Add extra padding at bottom
+      minHeight: '100%', // Ensure it fills the entire height
+    },
+  
+    // Digital Services Section
+    servicesSection: {
+      padding: 20,
+    },
+    sectionHeader: {
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+      alignItems: 'center',
+      marginBottom: 20,
+    },
+    sectionTitle: {
+      fontSize: 20,
+      fontWeight: '600',
+      color: '#000',
+    },
+  
+    // Tabs
+    tabsScroll: {
+      marginBottom: 20,
+    },
+    tab: {
+      paddingHorizontal: 16,
+      paddingVertical: 8,
+      backgroundColor: '#F5F5F5',
+      borderRadius: 20,
+      marginRight: 10,
+    },
+    activeTab: {
+      backgroundColor: '#8A2BE2',
+    },
+    tabText: {
+      color: '#666',
+      fontSize: 14,
+    },
+    activeTabText: {
+      color: '#fff',
+    },
+  
+    // Service Providers
 
-const filteredServices = services.filter(service => 
-  activeFilter === 'All' || service.category === activeFilter
-);
+    providerCard: {
+      width: 108,
+      height: 68,
+      borderRadius: 12,
+      marginRight: 15,
+      marginBottom: 15, // Add margin bottom for multiple rows
+      justifyContent: 'center',
+      alignItems: 'center',
+      shadowColor: '#000',
+      shadowOffset: {
+        width: 0,
+        height: 2,
+      },
+      shadowOpacity: 0.1,
+      shadowRadius: 4,
+      elevation: 3,
+    },
 
-  useEffect(() => {
-    loadInitialData();
-  }, []);
 
-  // ... keep all your existing load functions ...
+    providerLogo: {
+      width: '80%',
+      height: '80%',
+      resizeMode: 'contain',
+    },
 
-  if (isLoading) {
-    return (
-      <View style={styles.loadingContainer}>
-        <ActivityIndicator size="large" color="#8A2BE2" />
-      </View>
-    );
-  }
+    providersScroll: {
+      marginBottom: 20,
+      paddingHorizontal: 20,
+      paddingBottom: 10, // Add padding to show all items
+    },
+  
+    // Transactions Section
+    transactionsSection: {
+      padding: 20,
+      paddingTop: 0,
+    },
+    transactionItem: {
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+      alignItems: 'center',
+      paddingVertical: 15,
+      borderBottomWidth: 1,
+      borderBottomColor: '#F5F5F5',
+    },
+    transactionLeft: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 15,
+    },
+    transactionIcon: {
+      width: 40,
+      height: 40,
+      borderRadius: 20,
+    },
+    transactionTitle: {
+      fontSize: 16,
+      fontWeight: '500',
+      color: '#000',
+      marginBottom: 4,
+    },
+    transactionDate: {
+      fontSize: 12,
+      color: '#666',
+    },
+    transactionRight: {
+      alignItems: 'flex-end',
+    },
+    transactionAmount: {
+      fontSize: 16,
+      fontWeight: '600',
+      color: '#FF4444',
+      marginBottom: 4,
+    },
+    transactionStatus: {
+      fontSize: 12,
+      color: '#4CAF50',
+    },
+  });
 
   return (
     <ScrollView style={styles.container}>
-      {/* Header with Profile and Wallet */}
+      {/* Header Section */}
       <View style={styles.header}>
-        <Pressable onPress={() => router.push("/profile")}>
-          <Image 
-            source={getImageSource(userData?.avatar, DEFAULT_AVATAR)}
-            style={styles.avatar}
-          />
-        </Pressable>
-        <View style={styles.dotsContainer}>
+        <Image 
+          source={require('../assets/profile-pic.png')} 
+          style={styles.profilePic}
+        />
+        <View style={styles.dotIndicator}>
           <View style={[styles.dot, styles.activeDot]} />
           <View style={styles.dot} />
         </View>
-        <Pressable 
-          style={styles.walletButton}
-          onPress={() => router.push("/wallet")}
-        >
+        <View style={styles.walletIconContainer}>
           <Image 
-            source={WALLET_ICON}
+            source={require('../assets/icons/wallet.png')}
             style={styles.walletIcon}
+            resizeMode="contain"
           />
-        </Pressable>
+        </View>
       </View>
-
+  
       {/* Balance Section */}
-      <View style={styles.balanceContainer}>
-        <Pressable 
-          style={styles.balanceHeader}
-          onPress={() => setShowBalance(!showBalance)}
-        >
-          <Text style={styles.balanceLabel}>Balance</Text>
-          <Ionicons 
-            name={showBalance ? "chevron-down" : "chevron-forward"} 
-            size={20} 
-            color="#FFF" 
-          />
-        </Pressable>
-        <View style={styles.balanceBox}>
-          <View style={styles.balanceAmountContainer}>
-            <Image source={NAIRA_ICON} style={styles.nairaIcon} />
-            <Text style={styles.balanceText}>
-              {showBalance ? balance?.toLocaleString() || '0' : '****'}
-            </Text>
+      <View style={styles.balanceWrapper}>
+        <Text style={styles.balanceLabel}>Balance</Text>
+        <View style={styles.balanceContainer}>
+          <View style={styles.balanceLeft}>
+            <Image 
+              source={require('../assets/icons/coin.png')}
+              style={styles.coinIcon}
+            />
+            <Text style={styles.balanceText}>12000</Text>
           </View>
-          <Pressable 
-  style={styles.addButton}
-  onPress={() => router.push("/bank-transfer")} // Changed from "/add-funds" to "/add-from-card"
->
-  <Text style={styles.addButtonText}>+</Text>
-</Pressable>
-        </View>
-      </View>
-
-      {/* Trix 101 Card */}
-      <View style={styles.trixCard}>
-        <Text style={styles.trixTitle}>Trix 101</Text>
-        <Text style={styles.trixDescription}>
-          Get rewarded for the things you love, because you deserve more.
-        </Text>
-        <Pressable 
-          style={styles.learnMoreButton}
-          onPress={() => router.push("/learn-more")}
-        >
-          <Text style={styles.learnMoreText}>Learn more</Text>
-        </Pressable>
-      </View>
-
-      {/* Digital Services Section */}
-      
-
-      {/* Digital Services Section */}
-      <View style={styles.servicesSection}>
-        <Pressable 
-          style={styles.sectionHeader}
-          onPress={() => router.push("/DigitalServicesScreen")}
-        >
-          <Text style={styles.sectionTitle}>Digital Services</Text>
-          <Ionicons name="chevron-forward" size={24} color="#000" />
-        </Pressable>
-
-        {/* Filter Tabs */}
-        <ScrollView 
-          horizontal 
-          showsHorizontalScrollIndicator={false} 
-          style={styles.filterTabs}
-          contentContainerStyle={styles.filterTabsContent}
-        >
-          {['All', 'Subscriptions', 'Gift Cards', 'Recharge Card'].map((filter) => (
-            <Pressable 
-              key={filter}
-              style={[styles.filterTab, activeFilter === filter && styles.activeTab]}
-              onPress={() => setActiveFilter(filter)}
-            >
-              <Text style={[
-                styles.filterText,
-                activeFilter === filter && styles.activeFilterText
-              ]}>
-                {filter}
-              </Text>
-            </Pressable>
-          ))}
-        </ScrollView>
-
-        {/* Service Cards Grid */}
-        <View style={styles.sectionHeader}>
-          <Text style={styles.sectionTitle}>Services</Text>
-          <Pressable onPress={() => router.push("/services")}>
-            <Text style={styles.moreText}>More</Text>
-            <Ionicons name="chevron-forward" size={24} color="#666" />
+          <Pressable style={styles.addButton}>
+            <Text style={styles.addButtonText}>+</Text>
           </Pressable>
         </View>
-
-        <View style={styles.servicesGrid}>
-  {serviceItems.map((item) => (
-    <Pressable
-      key={item.id}
-      style={[styles.serviceItem, { backgroundColor: item.color }]}
-      onPress={() => {
-        if (item.name === 'Airtime') {
-          router.push('/airtime');  // Navigate to dedicated airtime screen
-        } else {
-          router.push(`/services/${item.name.toLowerCase()}`);  // Default navigation for other services
-        }
-      }}
-    >
-      <View style={styles.serviceIconContainer}>
-        {item.icon}
       </View>
-      <Text style={styles.serviceName}>{item.name}</Text>
-    </Pressable>
-  ))}
-</View>
-      </View>
+  
+      {/* Main Content Container */}
+      <View style={styles.mainContainer}>
+        {/* Digital Services Section */}
+        <View style={styles.servicesSection}>
+          <View style={styles.sectionHeader}>
+            <Text style={styles.sectionTitle}>Digital Services</Text>
+            <Ionicons name="chevron-forward" size={24} color="#000" />
+          </View>
+  
+          {/* Service Tabs */}
+          <ScrollView 
+            horizontal 
+            showsHorizontalScrollIndicator={false}
+            style={styles.tabsScroll}
+          >
+            {TABS.map((tab) => (
+              <Pressable
+                key={tab}
+                style={[styles.tab, activeTab === tab && styles.activeTab]}
+                onPress={() => setActiveTab(tab)}
+              >
+                <Text style={[styles.tabText, activeTab === tab && styles.activeTabText]}>
+                  {tab}
+                </Text>
+              </Pressable>
+            ))}
+          </ScrollView>
+  
+          {/* Service Providers */}
+          <ScrollView 
+            horizontal 
+            showsHorizontalScrollIndicator={false}
+            style={styles.providersScroll}
+          >
+            {PROVIDERS.map((provider) => (
+  // Update the onPress handler in your JSX
+<Pressable
+  key={provider.id}
+  style={[
+    styles.providerCard,
+    { backgroundColor: provider.backgroundColor }
+  ]}
+  onPress={() => {
+    switch(provider.id) {
+      case '1':
+        router.push('/airtel');
+        break;
+      case '2':
+        router.push('/mtn');
+        break;
+      case '3':
+        router.push('/glo');
+        break;
+      case '4':
+        router.push('/9mobile');
+        break;
 
-     
-      {/* Recent Transactions */}
-      <View style={styles.transactionsSection}>
-        <View style={styles.sectionHeader}>
+        case '5':
+          router.push('/betting');
+          break;
+        case '6':
+          router.push('/electricity');
+          break;
+        case '7':
+          router.push('/dstv');
+          break;
+        case '8':
+          router.push('/gotv');
+          break;
+        case '9':
+          router.push('/startimes');
+          break;
+        case '10':
+          router.push('/waec');
+          break;
+      }
+    }}
+  >
+    <Image 
+      source={provider.logo}
+      style={styles.providerLogo}
+    />
+  </Pressable>
+))}
+          </ScrollView>
+        </View>
+  
+        {/* Recent Transactions Section */}
+        <View style={styles.transactionsSection}>
           <Text style={styles.sectionTitle}>Recent Transactions</Text>
-          <Pressable onPress={() => router.push("/transactions")}>
-            <Text style={styles.viewAllText}>View all</Text>
-          </Pressable>
-        </View>
-        
-        {transactions.length === 0 ? (
-          <Text style={styles.noTransactions}>No recent transactions</Text>
-        ) : (
-          transactions.map((transaction) => (
+          {transactions.map((transaction) => (
             <View key={transaction.id} style={styles.transactionItem}>
               <View style={styles.transactionLeft}>
                 <Image 
-                  source={getImageSource(transaction.icon, DEFAULT_TRANSACTION_ICON)}
+                  source={transaction.icon}
                   style={styles.transactionIcon}
-                  resizeMode="contain"
                 />
                 <View>
                   <Text style={styles.transactionTitle}>{transaction.title}</Text>
@@ -352,312 +481,18 @@ const filteredServices = services.filter(service =>
                 </View>
               </View>
               <View style={styles.transactionRight}>
-                <Text style={[
-                  styles.transactionAmount,
-                  { color: transaction.amount < 0 ? '#FF4444' : '#4CAF50' }
-                ]}>
-                  {transaction.amount < 0 ? '-' : '+'}₦{Math.abs(transaction.amount).toLocaleString()}
+                <Text style={styles.transactionAmount}>
+                  -{transaction.amount.toLocaleString()}
                 </Text>
-                <Text style={[
-                  styles.transactionStatus,
-                  { color: transaction.status.toLowerCase() === 'completed' ? '#4CAF50' : '#FFA500' }
-                ]}>
+                <Text style={styles.transactionStatus}>
                   {transaction.status}
                 </Text>
               </View>
             </View>
-          ))
-        )}
+          ))}
+        </View>
       </View>
     </ScrollView>
   );
-}
-
-
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#8A2BE2',
-  },
-  header: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    padding: 16,
-    paddingTop: 48,
-  },
-  avatar: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    borderWidth: 2,
-    borderColor: '#FFF',
-  },
-  dotsContainer: {
-    flexDirection: 'row',
-    justifyContent: 'center',
-    gap: 8,
-  },
-  dot: {
-    width: 8,
-    height: 8,
-    borderRadius: 4,
-    backgroundColor: 'rgba(255,255,255,0.3)',
-  },
-  activeDot: {
-    backgroundColor: '#FFF',
-  },
-  walletButton: {
-    padding: 8,
-    backgroundColor: 'rgba(255,255,255,0.2)',
-    borderRadius: 12,
-  },
-  walletIcon: {
-    width: 24,
-    height: 24,
-    tintColor: '#FFFFFF',
-  },
   
-  // Balance Section
-  balanceContainer: {
-    padding: 16,
-    paddingTop: 8,
-  },
-  balanceHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-  },
-  balanceLabel: {
-    color: '#FFFFFF',
-    fontSize: 16,
-    fontWeight: '500',
-  },
-  balanceBox: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    backgroundColor: 'rgba(0,0,0,0.2)',
-    padding: 12,
-    borderRadius: 12,
-    marginTop: 8,
-  },
-  balanceAmountContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  nairaIcon: {
-    width: 20,
-    height: 20,
-    marginRight: 4,
-    tintColor: '#FFF',
-  },
-  balanceText: {
-    color: '#FFF',
-    fontSize: 24,
-    fontWeight: 'bold',
-  },
-  addButton: {
-    backgroundColor: 'rgba(255,255,255,0.2)',
-    width: 32,
-    height: 32,
-    borderRadius: 16,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  addButtonText: {
-    color: '#FFFFFF',
-    fontSize: 20,
-    fontWeight: '500',
-  },
-
-  // Trix Card
-  trixCard: {
-    backgroundColor: '#FFFFFF',
-    margin: 16,
-    padding: 20,
-    borderRadius: 16,
-    elevation: 2,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-  },
-  trixTitle: {
-    fontSize: 20,
-    fontWeight: 'bold',
-    marginBottom: 8,
-    color: '#000',
-  },
-  trixDescription: {
-    color: '#666',
-    fontSize: 14,
-    lineHeight: 20,
-    marginBottom: 12,
-  },
-  learnMoreButton: {
-    alignSelf: 'flex-start',
-  },
-  learnMoreText: {
-    color: '#8A2BE2',
-    fontWeight: '600',
-    fontSize: 14,
-  },
-
-  // Services Section
-  filterTabs: {
-    marginBottom: 20,
-  },
-  filterTabsContent: {
-    paddingHorizontal: 16,
-  },
-  filterTab: {
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    marginRight: 8,
-    borderRadius: 20,
-    backgroundColor: '#F5F5F5',
-  },
-  activeTab: {
-    backgroundColor: '#8A2BE2',
-  },
-  filterText: {
-    color: '#666',
-    fontSize: 14,
-  },
-  activeFilterText: {
-    color: '#FFFFFF',
-  },
-  serviceCard: {
-    width: '23%',
-    aspectRatio: 1,
-    backgroundColor: '#8A2BE2',
-    borderRadius: 12,
-    justifyContent: 'center',
-    alignItems: 'center',
-    padding: 12,
-  },
-  serviceIcon: {
-    width: '60%',
-    height: '60%',
-    tintColor: '#FFF',
-  },
-
-  // Transactions Section
-  transactionsSection: {
-    backgroundColor: '#FFFFFF',
-    paddingTop: 24,
-    paddingBottom: 32,
-  },
-  viewAllText: {
-    color: '#8A2BE2',
-    fontSize: 14,
-    fontWeight: '500',
-  },
-  transactionItem: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingVertical: 16,
-    paddingHorizontal: 16,
-    borderBottomWidth: 1,
-    borderBottomColor: '#F5F5F5',
-  },
-  transactionLeft: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
-  },
-  transactionIcon: {
-    width: 40,
-    height: 40,
-    borderRadius: 12,
-    backgroundColor: '#8A2BE2',
-  },
-  transactionTitle: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#000',
-    marginBottom: 4,
-  },
-  transactionDate: {
-    color: '#666',
-    fontSize: 12,
-  },
-  transactionRight: {
-    alignItems: 'flex-end',
-  },
-  transactionAmount: {
-    fontSize: 16,
-    fontWeight: '600',
-    marginBottom: 4,
-  },
-  transactionStatus: {
-    fontSize: 12,
-  },
-  noTransactions: {
-    textAlign: 'center',
-    color: '#666',
-    padding: 20,
-    fontSize: 14,
-  },
-  loadingContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    backgroundColor: '#8A2BE2',
-  },
-
-  servicesSection: {
-    backgroundColor: '#FFFFFF',
-    padding: 16,
-  },
-  sectionHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 16,
-  },
-  sectionTitle: {
-    fontSize: 24,
-    fontWeight: 'bold',
-    color: '#000',
-  },
-  moreText: {
-    color: '#666',
-    fontSize: 16,
-  },
-  servicesGrid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    justifyContent: 'space-between',
-    paddingHorizontal: 8, // Add padding to align with edges
-  },
-
-  serviceItem: {
-    width: '23%', // Slightly adjust width for better spacing
-    aspectRatio: 1,
-    borderRadius: 12,
-    marginBottom: 20, // Increase bottom margin
-    padding: 8, // Reduce padding
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  serviceName: {
-    color: '#FFF',
-    fontSize: 10, // Smaller font size
-    textAlign: 'center',
-    fontWeight: '500',
-    marginTop: 4, // Add small top margin
-  },
-  serviceIconContainer: {
-    width: 32, // Fixed width for icon container
-    height: 32, // Fixed height for icon container
-    borderRadius: 16,
-    backgroundColor: 'rgba(255,255,255,0.2)', // Add slight background
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: 6, // Reduce space between icon and text
-  },
-});
+}

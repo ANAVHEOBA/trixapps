@@ -3,7 +3,7 @@ import { router, useLocalSearchParams } from "expo-router";
 import { useState, useEffect, useRef } from "react";
 
 // API Configuration
-const API_URL = 'http://192.168.211.236:8001/api';
+const API_URL = 'http://192.168.172.236:8001/api';
 
 export default function VerificationScreen() {
     const params = useLocalSearchParams();
