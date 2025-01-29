@@ -2,6 +2,7 @@ import { View, Text, StyleSheet, Image, Pressable, ScrollView, ActivityIndicator
 import { router } from "expo-router";
 import { useState, useEffect } from "react";
 import { MaterialCommunityIcons, Ionicons } from '@expo/vector-icons';
+import { ApiClient } from './utilities/apiClient';
 
 // Constants
 const PROVIDERS = [
@@ -91,28 +92,7 @@ interface Transaction {
   status: 'Completed' | 'Pending';
 }
 
-export default function HomeScreen() {
-  const [balance, setBalance] = useState(12000);
-  const [showBalance, setShowBalance] = useState(true);
-  const [activeTab, setActiveTab] = useState('All');
-  const [transactions] = useState<Transaction[]>([
-    {
-      id: '1',
-      icon: require('../assets/twitch-icon.png'),
-      title: 'Product Payment',
-      date: 'Payment Date',
-      amount: -12000,
-      status: 'Completed'
-    },
-    {
-      id: '2',
-      icon: require('../assets/twitch-icon.png'),
-      title: 'Product Payment',
-      date: 'Payment Date',
-      amount: -12000,
-      status: 'Completed'
-    }
-  ]);
+
 
 
   const styles = StyleSheet.create({
@@ -340,6 +320,75 @@ export default function HomeScreen() {
     },
   });
 
+  
+
+interface Transaction {
+  id: string;
+  icon: any;
+  title: string;
+  date: string;
+  amount: number;
+  status: 'Completed' | 'Pending';
+}
+
+export default function HomeScreen() {
+  const [balance, setBalance] = useState<number | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [showBalance, setShowBalance] = useState(true);
+  const [activeTab, setActiveTab] = useState('All');
+  const [transactions] = useState<Transaction[]>([
+    {
+      id: '1',
+      icon: require('../assets/twitch-icon.png'),
+      title: 'Product Payment',
+      date: 'Payment Date',
+      amount: -12000,
+      status: 'Completed'
+    },
+    {
+      id: '2',
+      icon: require('../assets/twitch-icon.png'),
+      title: 'Product Payment',
+      date: 'Payment Date',
+      amount: -12000,
+      status: 'Completed'
+    }
+  ]);
+
+  useEffect(() => {
+    fetchBalance();
+  }, []);
+
+  const fetchBalance = async () => {
+    try {
+      setIsLoading(true);
+      const response = await ApiClient.get('/wallet/balance');
+      if (response.success) {
+        setBalance(response.data.balance);
+      }
+    } catch (error) {
+      console.error('Error fetching balance:', error);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const renderBalance = () => {
+    if (isLoading) {
+      return <ActivityIndicator size="small" color="#FFFFFF" />;
+    }
+    
+    if (!showBalance) {
+      return <Text style={styles.balanceText}>****</Text>;
+    }
+
+    return (
+      <Text style={styles.balanceText}>
+        {balance?.toLocaleString() ?? '0'}
+      </Text>
+    );
+  };
+
   return (
     <ScrollView style={styles.container}>
       {/* Header Section */}
@@ -360,33 +409,41 @@ export default function HomeScreen() {
           />
         </View>
       </View>
-  
+
       {/* Balance Section */}
       <View style={styles.balanceWrapper}>
         <Text style={styles.balanceLabel}>Balance</Text>
-        <View style={styles.balanceContainer}>
+        <Pressable 
+          style={styles.balanceContainer}
+          onPress={() => setShowBalance(!showBalance)}
+        >
           <View style={styles.balanceLeft}>
             <Image 
               source={require('../assets/icons/coin.png')}
               style={styles.coinIcon}
             />
-            <Text style={styles.balanceText}>12000</Text>
+            {renderBalance()}
           </View>
-          <Pressable style={styles.addButton}>
+          <Pressable 
+            style={styles.addButton}
+            onPress={() => router.push('/add-funds')}
+          >
             <Text style={styles.addButtonText}>+</Text>
           </Pressable>
-        </View>
+        </Pressable>
       </View>
-  
+
       {/* Main Content Container */}
       <View style={styles.mainContainer}>
         {/* Digital Services Section */}
         <View style={styles.servicesSection}>
-          <View style={styles.sectionHeader}>
-            <Text style={styles.sectionTitle}>Digital Services</Text>
-            <Ionicons name="chevron-forward" size={24} color="#000" />
-          </View>
-  
+        <View style={styles.sectionHeader}>
+  <Text style={styles.sectionTitle}>Digital Services</Text>
+  <Pressable onPress={() => router.push('/DigitalServicesScreen')}>
+    <Ionicons name="chevron-forward" size={24} color="#000" />
+  </Pressable>
+</View>
+
           {/* Service Tabs */}
           <ScrollView 
             horizontal 
@@ -405,7 +462,7 @@ export default function HomeScreen() {
               </Pressable>
             ))}
           </ScrollView>
-  
+
           {/* Service Providers */}
           <ScrollView 
             horizontal 
@@ -413,58 +470,36 @@ export default function HomeScreen() {
             style={styles.providersScroll}
           >
             {PROVIDERS.map((provider) => (
-  // Update the onPress handler in your JSX
-<Pressable
-  key={provider.id}
-  style={[
-    styles.providerCard,
-    { backgroundColor: provider.backgroundColor }
-  ]}
-  onPress={() => {
-    switch(provider.id) {
-      case '1':
-        router.push('/airtel');
-        break;
-      case '2':
-        router.push('/mtn');
-        break;
-      case '3':
-        router.push('/glo');
-        break;
-      case '4':
-        router.push('/9mobile');
-        break;
-
-        case '5':
-          router.push('/betting');
-          break;
-        case '6':
-          router.push('/electricity');
-          break;
-        case '7':
-          router.push('/dstv');
-          break;
-        case '8':
-          router.push('/gotv');
-          break;
-        case '9':
-          router.push('/startimes');
-          break;
-        case '10':
-          router.push('/waec');
-          break;
-      }
-    }}
-  >
-    <Image 
-      source={provider.logo}
-      style={styles.providerLogo}
-    />
-  </Pressable>
-))}
+              <Pressable
+                key={provider.id}
+                style={[
+                  styles.providerCard,
+                  { backgroundColor: provider.backgroundColor }
+                ]}
+                onPress={() => {
+                  switch(provider.id) {
+                    case '1': router.push('/airtel'); break;
+                    case '2': router.push('/mtn'); break;
+                    case '3': router.push('/glo'); break;
+                    case '4': router.push('/9mobile'); break;
+                    case '5': router.push('/betting'); break;
+                    case '6': router.push('/electricity'); break;
+                    case '7': router.push('/dstv'); break;
+                    case '8': router.push('/gotv'); break;
+                    case '9': router.push('/startimes'); break;
+                    case '10': router.push('/waec'); break;
+                  }
+                }}
+              >
+                <Image 
+                  source={provider.logo}
+                  style={styles.providerLogo}
+                />
+              </Pressable>
+            ))}
           </ScrollView>
         </View>
-  
+
         {/* Recent Transactions Section */}
         <View style={styles.transactionsSection}>
           <Text style={styles.sectionTitle}>Recent Transactions</Text>
@@ -494,5 +529,4 @@ export default function HomeScreen() {
       </View>
     </ScrollView>
   );
-  
 }

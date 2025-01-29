@@ -1,12 +1,40 @@
-import { View, Text, StyleSheet, Image, Pressable, ScrollView, TextInput } from "react-native";
+import { View, Text, StyleSheet, Image, Pressable, ScrollView, TextInput, Modal } from "react-native";
 import { router } from "expo-router";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Ionicons } from '@expo/vector-icons';
+import { ApiClient } from './utilities/apiClient';
 
-export default function AirtimeScreen() {
-  const [phoneNumber, setPhoneNumber] = useState('816 000 2000');
-  const [amount, setAmount] = useState('2000');
-  const quickAmounts = ['100', '200', '500', '1000'];
+export default function DSTVScreen() {
+  const [smartCardNumber, setSmartCardNumber] = useState('');
+  const [amount, setAmount] = useState('');
+  const [selectedPackage, setSelectedPackage] = useState<any>(null);
+  const [showPackageModal, setShowPackageModal] = useState(false);
+  const [plans, setPlans] = useState<any[]>([]);
+  const [isLoading, setIsLoading] = useState(false);
+
+  useEffect(() => {
+    fetchPlans();
+  }, []);
+
+  const fetchPlans = async () => {
+    setIsLoading(true);
+    try {
+      const response = await ApiClient.get('/payscribe/bouquets?service=startimes');
+      if (response.success) {
+        setPlans(response.data.plans);
+      }
+    } catch (error) {
+      console.error('Error fetching DSTV plans:', error);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handlePackageSelect = (plan: any) => {
+    setSelectedPackage(plan);
+    setAmount(plan.amount.toString());
+    setShowPackageModal(false);
+  };
 
   return (
     <View style={styles.container}>
@@ -34,10 +62,10 @@ export default function AirtimeScreen() {
         </View>
       </View>
 
-      {/* Brand Logo Section */}
+      {/* DSTV Logo Section */}
       <View style={styles.brandSection}>
         <Image 
-          source={require("../assets/networks/2.png")}
+          source={require("../assets/networks/startimes-logo.png")}
           style={styles.brandLogo}
         />
       </View>
@@ -49,76 +77,59 @@ export default function AirtimeScreen() {
           <View style={styles.brandHeader}>
             <View style={styles.brandTitleContainer}>
               <Image 
-                source={require("../assets/networks/airtel-small.png")}
+                source={require("../assets/networks/startimes-small.jpeg")}
                 style={styles.smallLogo}
               />
-              <Text style={styles.brandName}>Airtel</Text>
+              <Text style={styles.brandName}>DSTV</Text>
             </View>
             <View style={styles.ratingContainer}>
               <Ionicons name="star" size={16} color="#8A2BE2" />
               <Text style={styles.ratingText}>4.5</Text>
             </View>
           </View>
+
+          <Text style={styles.description}>
+            Immerse yourself in high-fidelity audio with the Virtuoso RGB Wireless headset, designed for the discerning gamer. Featurin...
+          </Text>
         </View>
 
         {/* Form Section */}
         <View style={styles.formSection}>
-          {/* Phone Number Input */}
-          <View style={styles.phoneNumberSection}>
-            <Text style={styles.label}>Phone Number</Text>
-            <View style={styles.phoneInputRow}>
-              <View style={styles.phoneInput}>
-                <Image 
-                  source={require("../assets/nigeria-flag.png")}
-                  style={styles.flag}
-                />
-                <TextInput
-                  value={phoneNumber}
-                  onChangeText={setPhoneNumber}
-                  style={styles.input}
-                  keyboardType="phone-pad"
-                  placeholder="Enter phone number"
-                />
-                <Pressable onPress={() => setPhoneNumber('')}>
-                  <Ionicons name="close-circle" size={20} color="#666" />
-                </Pressable>
-              </View>
-              <Pressable style={styles.contactButton}>
-                <Ionicons name="people" size={24} color="#8A2BE2" />
-              </Pressable>
-            </View>
+          {/* Smart Card Number Input */}
+          <View style={styles.inputSection}>
+            <Text style={styles.label}>Smart Card Number</Text>
+            <TextInput
+              value={smartCardNumber}
+              onChangeText={setSmartCardNumber}
+              style={styles.textInput}
+              placeholder="Smart Card Number"
+            />
           </View>
 
-          {/* Quick Amount Selection */}
-          <View style={styles.quickAmounts}>
-            {quickAmounts.map((quickAmount) => (
-              <Pressable
-                key={quickAmount}
-                style={[
-                  styles.amountButton,
-                  amount === quickAmount && styles.selectedAmount
-                ]}
-                onPress={() => setAmount(quickAmount)}
-              >
-                <Text style={[
-                  styles.amountButtonText,
-                  amount === quickAmount && styles.selectedAmountText
-                ]}>₦{quickAmount}</Text>
-              </Pressable>
-            ))}
+          {/* Package Selection */}
+          <View style={styles.inputSection}>
+            <Text style={styles.label}>Package</Text>
+            <Pressable 
+              style={styles.packageSelector}
+              onPress={() => setShowPackageModal(true)}
+            >
+              <Text style={styles.packageText}>
+                {selectedPackage ? selectedPackage.name : 'Select a package'}
+              </Text>
+              <Ionicons name="chevron-down" size={24} color="#333" />
+            </Pressable>
           </View>
 
           {/* Amount Input */}
-          <View style={styles.amountSection}>
+          <View style={styles.inputSection}>
             <Text style={styles.label}>Amount</Text>
             <View style={styles.amountInput}>
               <Text style={styles.currencySymbol}>₦</Text>
               <TextInput
                 value={amount}
-                onChangeText={setAmount}
                 style={styles.input}
                 keyboardType="numeric"
-                placeholder="Enter amount"
+                editable={false}
               />
             </View>
           </View>
@@ -129,9 +140,11 @@ export default function AirtimeScreen() {
             <View style={styles.priceContainer}>
               <Image 
                 source={require("../assets/icons/coin.png")}
-                style={[styles.coinIcon, { width: 24, height: 24 }]}
+                style={styles.coinIcon}
               />
-              <Text style={styles.priceText}>{amount}</Text>
+              <Text style={styles.priceText}>
+                {selectedPackage ? selectedPackage.amount.toLocaleString() : '0'}
+              </Text>
             </View>
           </View>
 
@@ -144,6 +157,40 @@ export default function AirtimeScreen() {
           </Pressable>
         </View>
       </ScrollView>
+
+      {/* Package Selection Modal */}
+      <Modal
+        visible={showPackageModal}
+        transparent={true}
+        animationType="slide"
+        onRequestClose={() => setShowPackageModal(false)}
+      >
+        <View style={styles.modalContainer}>
+          <View style={styles.modalContent}>
+            <Text style={styles.modalTitle}>Select Package</Text>
+            <ScrollView>
+              {plans.map((plan) => (
+                <Pressable
+                  key={plan.id}
+                  style={styles.planOption}
+                  onPress={() => handlePackageSelect(plan)}
+                >
+                  <Text style={styles.planOptionText}>{plan.name}</Text>
+                  <Text style={styles.planOptionPrice}>
+                    ₦{plan.amount.toLocaleString()}
+                  </Text>
+                </Pressable>
+              ))}
+            </ScrollView>
+            <Pressable
+              style={styles.closeButton}
+              onPress={() => setShowPackageModal(false)}
+            >
+              <Text style={styles.closeButtonText}>Close</Text>
+            </Pressable>
+          </View>
+        </View>
+      </Modal>
     </View>
   );
 }
@@ -262,11 +309,6 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     marginBottom: 8,
   },
-  description: {
-    fontSize: 14,
-    color: '#666',
-    lineHeight: 20,
-  },
   formSection: {
     padding: 24,
     backgroundColor: '#FFFFFF',
@@ -369,24 +411,10 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 4,
   },
-  purchaseButton: {
-    margin: 24,
-    backgroundColor: '#8A2BE2',
-    padding: 16,
-    borderRadius: 28,
-    alignItems: 'center',
-  },
   purchaseButtonText: {
     color: '#FFFFFF',
     fontSize: 16,
     fontWeight: '600',
-  },
-
-  brandSection: {
-    backgroundColor: '#FFF5F5', // Light red/pink background for Airtel
-    width: '100%',
-    paddingVertical: 30,
-    alignItems: 'center',
   },
   brandLogo: {
     width: 298.67,
@@ -558,4 +586,56 @@ const styles = StyleSheet.create({
     color: '#333',
     marginRight: 8,
   },
+
+  packageText: {
+    fontSize: 16,
+    color: '#333',
+  },
+
+  purchaseButton: {
+    backgroundColor: '#8A2BE2',
+    padding: 16,
+    borderRadius: 28,
+    alignItems: 'center',
+    marginTop: 24,
+  },
+
+  inputSection: {
+    marginBottom: 24,
+  },
+
+  textInput: {
+    borderWidth: 1,
+    borderColor: '#E0E0E0',
+    borderRadius: 12,
+    padding: 16,
+    fontSize: 16,
+    height: 52,
+  },
+
+  packageSelector: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: '#E0E0E0',
+    borderRadius: 12,
+    padding: 16,
+    height: 52,
+  },
+
+  brandSection: {
+    backgroundColor: '#FFFFFF',
+    width: '100%',
+    paddingVertical: 30,
+    alignItems: 'center',
+  },
+  
+  description: {
+    fontSize: 14,
+    color: '#666',
+    marginTop: 16,
+    lineHeight: 20,
+  },
+
 });

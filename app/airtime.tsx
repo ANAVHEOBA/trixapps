@@ -4,9 +4,25 @@ import { useState } from "react";
 import { Ionicons } from '@expo/vector-icons';
 
 export default function AirtimeScreen() {
-  const [phoneNumber, setPhoneNumber] = useState('816 000 2000');
-  const [amount, setAmount] = useState('2000');
+  const [phoneNumber, setPhoneNumber] = useState('');
+  const [amount, setAmount] = useState('');
   const quickAmounts = ['100', '200', '500', '1000'];
+
+  const handlePurchase = () => {
+    if (phoneNumber && amount) {
+      router.push({
+        pathname: '/summary',
+        params: {
+          provider: 'Airtel',
+          subscriptionType: 'Airtime',
+          phoneNumber: phoneNumber,
+          plan: `${amount} Airtime`,
+          amount: amount,
+          type: 'airtime'
+        }
+      });
+    }
+  };
 
   return (
     <View style={styles.container}>
@@ -131,14 +147,18 @@ export default function AirtimeScreen() {
                 source={require("../assets/icons/coin.png")}
                 style={[styles.coinIcon, { width: 24, height: 24 }]}
               />
-              <Text style={styles.priceText}>{amount}</Text>
+              <Text style={styles.priceText}>{amount || '0'}</Text>
             </View>
           </View>
 
           {/* Purchase Button */}
           <Pressable 
-            style={styles.purchaseButton}
-            onPress={() => router.push('/payment-confirmation')}
+            style={[
+              styles.purchaseButton,
+              (!phoneNumber || !amount) && styles.purchaseButtonDisabled
+            ]}
+            onPress={handlePurchase}
+            disabled={!phoneNumber || !amount}
           >
             <Text style={styles.purchaseButtonText}>Purchase</Text>
           </Pressable>
@@ -148,10 +168,15 @@ export default function AirtimeScreen() {
   );
 }
 
+
 const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: '#FFFFFF',
+  },
+  purchaseButtonDisabled: {
+    backgroundColor: '#E0E0E0',
+    opacity: 0.7,
   },
   headerBackground: {
     backgroundColor: '#F5F5F5',

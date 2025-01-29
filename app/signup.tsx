@@ -2,7 +2,7 @@ import { View, Text, TextInput, Image, Pressable, StyleSheet, Alert, Modal, Scro
 import { router } from "expo-router";
 import { useState } from "react";
 
-const API_URL = 'http://192.168.172.236:8001/api'; 
+const API_URL = 'http://192.168.246.236:8001/api'; 
 
 // Define country interface
 interface Country {

@@ -52,3 +52,34 @@ anavheoba@anavheoba:~/Trix-API$ curl -v \
 < 
 {"success":true,"message":"GOTV lookup successfully.","data":{"service":"gotv","plans":[{"id":"WWdHcERRS05zMmpBYUEvNHhteEpWdz09","name":"GOtv Smallie - monthly","alias":"GOHAN","amount":1575,"priceOptions":[]},{"id":"T2NKUzNkY1ZVakIyNGJSVjRHZGpNUT09","name":"GOtv Jinja Bouquet","alias":"GOTVNJ1","amount":3300,"priceOptions":[]},{"id":"NWZBN1ZUSkJadG0xY3BKZEEwNWpoQT09","name":"GOtv Smallie - quarterly","alias":"GOLITE","amount":4175,"priceOptions":[]},{"id":"cnMyZUpYcGhLSUV1eWllOGhmTzF0dz09","name":"GOtv Jolli Bouquet","alias":"GOTVNJ2","amount":4850,"priceOptions":[]},{"id":"UUwra1dKRWJpaWQxUEZPTW9YUDQ0QT09","name":"GOtv Max","alias":"GOTVMAX","amount":7200,"priceOptions":[]},{"id":"dVhXUnpsenZhcTBWSmhwQWZUMHY1dz09","name":"GOtv Supa","alias":"GOTVSUPA","amount":9600,"priceOptions":[]},{"id":"RGExckQyT1Zwc0hXMjI3UXhqMS9LZz09","name":"GOtv Smallie - yearly","alias":"GOLTANL","amount":12300,"priceOptions":[]},{"id":"aldhSXorLzgwVVdydzFSZFdkcWtZdz09","name":"GOtv Supa Plus","alias":"GOTVSUPAPLUS","amount":15700,* Closing connection 0
 "priceOptions":[]}]}}anavheoba@anavheoba:~/Trix-API$ 
+
+
+
+ab@ab:~/Trix-API$ curl -v \
+-H "Authorization: Bearer 5|bMmQu8V5U76R5MBLWgBcO6GNLI5vYUSJmNoue3yHe688783a" \
+-H "Content-Type: application/json" \
+-H "Accept: application/json" \
+-H "X-Requested-With: XMLHttpRequest" \
+"http://192.168.172.236:8001/api/payscribe/bouquets?service=startimes"
+*   Trying 192.168.172.236:8001...
+* Connected to 192.168.172.236 (192.168.172.236) port 8001 (#0)
+> GET /api/payscribe/bouquets?service=startimes HTTP/1.1
+> Host: 192.168.172.236:8001
+> User-Agent: curl/7.81.0
+> Authorization: Bearer 5|bMmQu8V5U76R5MBLWgBcO6GNLI5vYUSJmNoue3yHe688783a
+> Content-Type: application/json
+> Accept: application/json
+> X-Requested-With: XMLHttpRequest
+> 
+* Mark bundle as not supporting multiuse
+< HTTP/1.1 200 OK
+< Host: 192.168.172.236:8001
+< Connection: close
+< X-Powered-By: PHP/8.4.1
+< Cache-Control: no-cache, private
+< Date: Tue, 21 Jan 2025 14:16:04 GMT
+< Content-Type: application/json
+< Access-Control-Allow-Origin: *
+< 
+{"success":true,"message":"STARTIMES lookup successfully.","data":{"service":"startimes","plans":[{"id":"YkhCeHlZeHFqRTkvdFdTRi94dTY4UT09","name":"Nova (Antenna) - Weekly","alias":"novaweek","amount":500,"priceOptions":[]},{"id":"RzVQUjVNUm40SVlLWnJBMmpjZlVNUT09","name":"Nova (Dish) - Weekly","alias":"novadishweek","amount":600,"priceOptions":[]},{"id":"RS9qbHVnZzVNc3pKRzlieFdickluQT09","name":"Basic (Antenna) - Weekly","alias":"basicweek","amount":1100,"priceOptions":[]},{"id":"aUFnUDQ0TVJsWXd1eFdIVzBHYkxQZz09","name":"Basic (Dish) - Weekly","alias":"smartweek","amount":1400,"priceOptions":[]},{"id":"cEJVVjVyK05LY1hKMk5aOXluYXFhQT09","name":"Classic (Antenna) - Weekly","alias":"classicweek","amount":1700,"priceOptions":[]},{"id":"T3NHTGkvMFJpTEh0NDhBQlJOQm44QT09","name":"Nova (Antenna) - Monthly","alias":"nova","amount":1700,"priceOptions":[]},{"id":"c2ZjNlY2eGdGeFdqMTdrVDZRb3JWUT09","name":"Nova (Dish) - Monthly","alias":"novadish","amount":1700,"priceOptions":[]},{"id":"UkM5THhGRTk1bUVtUWJSOFY5SmZXQT09","name":"Super (Antenna) - Weekly","alias":"superweek-antenna","amount":2700,"priceOptions":[]},{"id":"aUJSaVVNMy9uWENLengwdWZtUHhvUT09","name":"Super (Dish) - Weekly","alias":"superweek","amount":2800,"priceOptions":[]},{"id":"b3hkOGFtaFBZMzE4dXFkNm8wTDRDUT09","name":"Basic (Antenna) - Monthly","alias":"basic","amount":3300,"priceOptions":[]},{"id":"enNMNzZZV01OMXFwbERFZUFxZk4wZz09","name":"Basic (Dish) - Monthly","alias":"smart","amount":4200,"priceOptions":[]},{"id":"ZFBNNUtMZUdwK1VEcXYxSlZlUGtrdz09","name":"Classic (Antenna) - Monthly","alias":"classic","amount":5000,"priceOptions":[]},{"id":"M2ttTE9IaXUvRmZpcWpjeDAxUGRaUT09","name":"Global (Dish) - Weekly","alias":"global-dish-weekly","amount":6000,"priceOptions":[]},{"id":"d1VQMVU4N1hsdnNsdWIvT25jQzlqQT09","name":"Classic (Dish) - Monthly","alias":"special","amount":6200,"priceOptions":[]},{"id":"c09icm1XOGpqclUwbStxRTRLYWwvdz09","name":"Super (Antenna) - Monthly","alias":"super-antenna","amount":8000,"priceOptions":[]},{"id":"TVRqdk5yYU1kdGpBa3ordzJsemdBQ* Closing connection 0
+T09","name":"Super (Dish) - Monthly","alias":"super","amount":8200,"priceOptions":[]},{"id":"QTA0SmdHMEZoUWZxMDBpNDlSc0xlQT09","name":"Startimes Chinese (Dish) - Monthly","alias":"chinese","amount":16000,"priceOptions":[]},{"id":"c0NmMGtRa0p6ZUlZUlhicmZZVlprZz09","name":"Global (Dish) - Monthly","alias":"global-dish","amount":17000,"priceOptions":[]}]}}ab@ab:~/Trix-API$ 

@@ -8,6 +8,24 @@ export default function AirtimeScreen() {
   const [amount, setAmount] = useState('2000');
   const quickAmounts = ['100', '200', '500', '1000'];
 
+  const handlePurchase = () => {
+    if (phoneNumber && amount) {
+      router.push({
+        pathname: '/summary',
+        params: {
+          provider: '9mobile',
+          subscriptionType: 'Airtime',
+          phoneNumber: phoneNumber,
+          plan: `${amount} Airtime`,
+          amount: amount,
+          type: 'airtime'
+        }
+      });
+    }
+  };
+
+
+
   return (
     <View style={styles.container}>
       {/* Header */}
@@ -137,11 +155,15 @@ export default function AirtimeScreen() {
 
           {/* Purchase Button */}
           <Pressable 
-            style={styles.purchaseButton}
-            onPress={() => router.push('/payment-confirmation')}
-          >
-            <Text style={styles.purchaseButtonText}>Purchase</Text>
-          </Pressable>
+                                style={[
+                                  styles.purchaseButton,
+                                  (!phoneNumber || !amount) && styles.purchaseButtonDisabled
+                                ]}
+                                onPress={handlePurchase}
+                                disabled={!phoneNumber || !amount}
+                              >
+                                <Text style={styles.purchaseButtonText}>Purchase</Text>
+                              </Pressable>
         </View>
       </ScrollView>
     </View>
@@ -431,6 +453,10 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '500',
     color: '#333',
+  },
+  purchaseButtonDisabled: {
+    backgroundColor: '#E0E0E0',
+    opacity: 0.7,
   },
   dropdownIconContainer: {
     width: 24,

@@ -1,30 +1,52 @@
-import { View, Text, Pressable, StyleSheet, ScrollView } from "react-native";
+import { View, Text, StyleSheet, TextInput, Pressable, ActivityIndicator, Alert } from "react-native";
 import { router } from "expo-router";
+import { useState } from "react";
 import { Ionicons } from '@expo/vector-icons';
+import { ApiClient } from './utilities/apiClient';
 
 export default function AddFundsScreen() {
-  const features = [
-    {
-      icon: "globe-outline",
-      title: "Recieve International Payments",
-      description: "Get paid by foreign clients. Ideal for freelancers, creators and remote workers."
-    },
-    {
-      icon: "flash-outline",
-      title: "Convenient and quick",
-      description: "Experience the ease of instantly receiving funds and making International payments from your USD account."
-    },
-    {
-      icon: "wallet-outline",
-      title: "Affordable Fees",
-      description: "ACH & Wire transfers supported\n~ 0.25% for deposits\n~ $1.00 monthly meaintainace fees\n~ #3,000 Account request fee"
-    },
-    {
-      icon: "card-outline",
-      title: "Payments we support",
-      description: "~ First party: Sending funds to yourself\n~ Business: Paying business contractors or vendors\n~ International ACH transactions (IATs): Subscriptions for platforms like Apple, amazon, and so on."
+  const [amount, setAmount] = useState('');
+  const [email, setEmail] = useState('');
+  const [isLoading, setIsLoading] = useState(false);
+
+  const handleInitializePayment = async () => {
+    if (!amount || parseFloat(amount) < 100) {
+      Alert.alert('Invalid Amount', 'Please enter an amount greater than ₦100');
+      return;
     }
-  ];
+
+    if (!email || !email.includes('@')) {
+      Alert.alert('Invalid Email', 'Please enter a valid email address');
+      return;
+    }
+
+    try {
+      setIsLoading(true);
+      const response = await ApiClient.post('/paystack/initialize', {
+        amount: parseFloat(amount) * 100, // Convert to kobo
+        email: email.trim()
+      });
+
+      if (response.success) {
+        const { authorization_url, reference } = response.data.data;
+        // Navigate to WebView with the payment URL
+        router.push({
+          pathname: '/paystack-webview',
+          params: { 
+            url: authorization_url, 
+            reference: reference
+          }
+        });
+      } else {
+        Alert.alert('Error', response.message || 'Failed to initialize payment');
+      }
+    } catch (error) {
+      console.error('Payment initialization error:', error);
+      Alert.alert('Error', 'Failed to initialize payment. Please try again.');
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   return (
     <View style={styles.container}>
@@ -36,43 +58,44 @@ export default function AddFundsScreen() {
         >
           <Ionicons name="arrow-back" size={24} color="#000" />
         </Pressable>
-        <Text style={styles.title}>Request USD</Text>
+        <Text style={styles.headerTitle}>Add Funds</Text>
         <View style={styles.placeholder} />
       </View>
 
-      {/* Features List */}
-      <ScrollView 
-        style={styles.content}
-        showsVerticalScrollIndicator={false}
-      >
-        {features.map((feature, index) => (
-          <View key={index} style={styles.featureItem}>
-            <View style={styles.iconContainer}>
-              <Ionicons name={feature.icon} size={24} color="#8A2BE2" />
-            </View>
-            <View style={styles.featureContent}>
-              <Text style={styles.featureTitle}>{feature.title}</Text>
-              <Text style={styles.featureDescription}>{feature.description}</Text>
-            </View>
-          </View>
-        ))}
+      {/* Form */}
+      <View style={styles.form}>
+        <Text style={styles.label}>Amount (₦)</Text>
+        <TextInput
+          style={styles.input}
+          value={amount}
+          onChangeText={setAmount}
+          keyboardType="numeric"
+          placeholder="Enter amount"
+          placeholderTextColor="#999"
+        />
 
-        {/* Terms Agreement */}
-        <Text style={styles.termsText}>
-          By Continuing you agree to our{' '}
-          <Text style={styles.termsLink}>Terms of Service</Text>.
-        </Text>
-      </ScrollView>
+        <Text style={styles.label}>Email Address</Text>
+        <TextInput
+          style={styles.input}
+          value={email}
+          onChangeText={setEmail}
+          keyboardType="email-address"
+          autoCapitalize="none"
+          placeholder="Enter your email"
+          placeholderTextColor="#999"
+        />
 
-      {/* Request Button */}
-      <View style={styles.bottomContainer}>
-      // In the Request Button
-<Pressable 
-  style={styles.requestButton}
-  onPress={() => router.push('/payment-options')}
->
-  <Text style={styles.requestButtonText}>Request USD Account</Text>
-</Pressable>
+        <Pressable
+          style={[styles.button, isLoading && styles.buttonDisabled]}
+          onPress={handleInitializePayment}
+          disabled={isLoading}
+        >
+          {isLoading ? (
+            <ActivityIndicator color="#FFF" />
+          ) : (
+            <Text style={styles.buttonText}>Continue to Payment</Text>
+          )}
+        </Pressable>
       </View>
     </View>
   );
@@ -87,74 +110,57 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    padding: 24,
-    paddingTop: 48,
+    paddingHorizontal: 20,
+    paddingTop: 60,
+    paddingBottom: 20,
+    backgroundColor: '#F5F5F5',
   },
   backButton: {
     width: 40,
     height: 40,
+    borderRadius: 20,
+    backgroundColor: '#FFFFFF',
     justifyContent: 'center',
+    alignItems: 'center',
   },
-  title: {
-    fontSize: 20,
+  headerTitle: {
+    fontSize: 18,
     fontWeight: '600',
+    color: '#000',
   },
   placeholder: {
     width: 40,
   },
-  content: {
-    flex: 1,
-    padding: 24,
+  form: {
+    padding: 20,
   },
-  featureItem: {
-    flexDirection: 'row',
-    marginBottom: 32,
-  },
-  iconContainer: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: '#F8F0FF',
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginRight: 16,
-  },
-  featureContent: {
-    flex: 1,
-  },
-  featureTitle: {
+  label: {
     fontSize: 16,
-    fontWeight: '600',
+    fontWeight: '500',
+    color: '#333',
     marginBottom: 8,
+    marginTop: 16,
   },
-  featureDescription: {
-    fontSize: 14,
-    color: '#666',
-    lineHeight: 20,
-  },
-  termsText: {
-    fontSize: 14,
-    color: '#666',
-    textAlign: 'center',
-    marginVertical: 24,
-  },
-  termsLink: {
-    color: '#8A2BE2',
-    textDecorationLine: 'underline',
-  },
-  bottomContainer: {
-    padding: 24,
-    borderTopWidth: 1,
-    borderTopColor: '#F0F0F0',
-  },
-  requestButton: {
-    backgroundColor: '#8A2BE2',
+  input: {
     height: 56,
+    backgroundColor: '#F5F5F5',
+    borderRadius: 12,
+    paddingHorizontal: 16,
+    fontSize: 16,
+    color: '#000',
+  },
+  button: {
+    height: 56,
+    backgroundColor: '#8A2BE2',
     borderRadius: 28,
     justifyContent: 'center',
     alignItems: 'center',
+    marginTop: 32,
   },
-  requestButtonText: {
+  buttonDisabled: {
+    opacity: 0.7,
+  },
+  buttonText: {
     color: '#FFFFFF',
     fontSize: 16,
     fontWeight: '600',

@@ -3,6 +3,7 @@ import { router, Href } from "expo-router";
 import { useState, useEffect } from "react";
 import { Ionicons } from '@expo/vector-icons';
 import { ApiClient } from './utilities/apiClient';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 const styles = StyleSheet.create({
   container: {
@@ -141,7 +142,7 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     padding: 16,
     marginBottom: 24,
-    height: 52, // Fixed height
+    height: 52, 
   },
   dropdownText: {
     fontSize: 16,
@@ -171,7 +172,7 @@ const styles = StyleSheet.create({
     borderColor: '#E0E0E0',
     borderRadius: 12,
     padding: 16,
-    height: 52, // Fixed height
+    height: 52, 
   },
   flag: {
     width: 24,
@@ -182,11 +183,11 @@ const styles = StyleSheet.create({
     flex: 1,
     fontSize: 16,
     height: '100%',
-    padding: 0, // Remove default padding
+    padding: 0, 
   },
   contactButton: {
-    width: 52, // Square button
-    height: 52, // Same height as input
+    width: 52, 
+    height: 52, 
     backgroundColor: '#F8F0FF',
     borderRadius: 12,
     justifyContent: 'center',
@@ -199,7 +200,7 @@ const styles = StyleSheet.create({
   },
   durationTabs: {
     marginBottom: 32,
-    // Remove paddingHorizontal from here since it's already in formSection
+    
   },
   tabButton: {
     paddingHorizontal: 24,
@@ -239,7 +240,7 @@ const styles = StyleSheet.create({
   },
 
   brandSection: {
-    backgroundColor: '#FFF5F5', // Light red/pink background for Airtel
+    backgroundColor: '#FFF5F5', 
     width: '100%',
     paddingVertical: 30,
     alignItems: 'center',
@@ -392,7 +393,7 @@ interface Plan {
   interface SubscriptionType {
   id: string;
   name: string;
-  route: string; // Changed from Href<any> to string
+  route: string; 
 }
 
 
@@ -425,6 +426,38 @@ interface Plan {
     const [showSubscriptionModal, setShowSubscriptionModal] = useState(false);
 
 
+    const CACHE_KEY = 'airtel_plans_cache';
+const CACHE_EXPIRY = 15 * 60 * 1000; // 15 minutes in milliseconds
+
+const loadCachedPlans = async () => {
+  try {
+    const cached = await AsyncStorage.getItem(CACHE_KEY);
+    if (!cached) return null;
+    
+    const { timestamp, data } = JSON.parse(cached);
+    if (Date.now() - timestamp < CACHE_EXPIRY) {
+      return data;
+    }
+  } catch (error) {
+    console.error('Error loading cache:', error);
+  }
+  return null;
+};
+
+
+const saveCachedPlans = async (plans: Plan[]) => {
+  try {
+    const cacheData = {
+      timestamp: Date.now(),
+      data: plans
+    };
+    await AsyncStorage.setItem(CACHE_KEY, JSON.stringify(cacheData));
+  } catch (error) {
+    console.error('Error saving cache:', error);
+  }
+};
+
+
 
 
     // Fetch plans when component mounts
@@ -437,15 +470,29 @@ interface Plan {
     filterPlansByDuration(selectedTab);
   }, [selectedTab, plans]);
 
+  // Updated fetchDataPlans function
   const fetchDataPlans = async () => {
     setIsLoading(true);
     try {
+      // Check cache first
+      const cachedPlans = await loadCachedPlans();
+      if (cachedPlans) {
+        setPlans(cachedPlans);
+        if (cachedPlans.length > 0) {
+          setSelectedPlan(cachedPlans[0]);
+        }
+        return;
+      }
+  
       const response = await ApiClient.get('/payscribe/data/plans?network=airtel');
-      if (response.success && response.data.plans[0].plans) {
-        setPlans(response.data.plans[0].plans);
-        // Set initial selected plan
-        if (response.data.plans[0].plans.length > 0) {
-          setSelectedPlan(response.data.plans[0].plans[0]);
+      if (response.success && response.data.plans) {
+        // The plans are directly in response.data.plans
+        const newPlans = response.data.plans;
+        setPlans(newPlans);
+        saveCachedPlans(newPlans);
+        
+        if (newPlans.length > 0) {
+          setSelectedPlan(newPlans[0]);
         }
       }
     } catch (error) {
@@ -454,32 +501,44 @@ interface Plan {
       setIsLoading(false);
     }
   };
-
+  
+  // Update the Plan interface to match the API response
+  interface Plan {
+    plan_code: string;
+    name: string;
+    category: string;
+    alias: string;
+    amount: number;
+  }
+  
+  // Update the filterPlansByDuration function to better match plan names
   const filterPlansByDuration = (duration: string) => {
     let filtered = plans.filter(plan => {
       const name = plan.name.toLowerCase();
       switch (duration) {
         case 'Daily':
-          return name.includes('day') || name.includes('1 day');
+          return name.includes('1 day') || name.includes('daily') || name.includes('24 hours');
         case 'Weekly':
-          return name.includes('7 days') || name.includes('week');
+          return name.includes('7 days') || name.includes('week') || name.includes('14 days');
         case 'Monthly':
-          return name.includes('30 days') || name.includes('month');
+          return name.includes('30 days') || name.includes('month') || name.includes('30days');
         case 'Yearly':
-          return name.includes('365') || name.includes('year');
+          return name.includes('365') || name.includes('year') || name.includes('annual');
         default:
           return true;
       }
     });
+    
+    // Sort plans by amount
+    filtered = filtered.sort((a, b) => a.amount - b.amount);
+    
     setFilteredPlans(filtered);
-    // Set first plan as selected if available
     if (filtered.length > 0) {
       setSelectedPlan(filtered[0]);
     } else {
       setSelectedPlan(null);
     }
   };
-
 
   // Plan selection modal
   const PlanSelectionModal = () => (
@@ -730,14 +789,29 @@ interface Plan {
 </View>
   
             {/* Purchase Button */}
-            <Pressable 
-              style={styles.purchaseButton}
-              onPress={() => {
-                router.push('/payment-confirmation');
-              }}
-            >
-              <Text style={styles.purchaseButtonText}>Purchase</Text>
-            </Pressable>
+            // In AirtelScreen, update the purchase button
+{/* Purchase Button */}
+<Pressable 
+  style={styles.purchaseButton}
+  onPress={() => {
+    if (selectedPlan && phoneNumber) {
+      router.push({
+        pathname: '/summary',
+        params: {
+          provider: 'Airtel',
+          subscriptionType: subscriptionType,
+          phoneNumber: phoneNumber,
+          plan: selectedPlan.name,
+          amount: selectedPlan.amount.toString(),
+          planCode: selectedPlan.plan_code,
+          type: 'data'
+        }
+      });
+    }
+  }}
+>
+  <Text style={styles.purchaseButtonText}>Purchase</Text>
+</Pressable>
           </View>
         </ScrollView>
 

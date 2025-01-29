@@ -3,6 +3,7 @@ import { router, Href } from "expo-router";
 import { useState, useEffect } from "react";
 import { Ionicons } from '@expo/vector-icons';
 import { ApiClient } from './utilities/apiClient';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 const styles = StyleSheet.create({
   container: {
@@ -427,6 +428,40 @@ export default function GloScreen() {
 
 
 
+    const CACHE_KEY = '9mobile_plans_cache';
+const CACHE_EXPIRY = 15 * 60 * 1000; // 15 minutes in milliseconds
+
+const loadCachedPlans = async () => {
+  try {
+    const cached = await AsyncStorage.getItem(CACHE_KEY);
+    if (!cached) return null;
+    
+    const { timestamp, data } = JSON.parse(cached);
+    if (Date.now() - timestamp < CACHE_EXPIRY) {
+      return data;
+    }
+  } catch (error) {
+    console.error('Error loading cache:', error);
+  }
+  return null;
+};
+
+
+const saveCachedPlans = async (plans: Plan[]) => {
+  try {
+    const cacheData = {
+      timestamp: Date.now(),
+      data: plans
+    };
+    await AsyncStorage.setItem(CACHE_KEY, JSON.stringify(cacheData));
+  } catch (error) {
+    console.error('Error saving cache:', error);
+  }
+};
+
+
+
+
     // Fetch plans when component mounts
   useEffect(() => {
     fetchDataPlans();
@@ -437,15 +472,29 @@ export default function GloScreen() {
     filterPlansByDuration(selectedTab);
   }, [selectedTab, plans]);
 
+  // Updated fetchDataPlans function
   const fetchDataPlans = async () => {
     setIsLoading(true);
     try {
-        const response = await ApiClient.get('/payscribe/data/plans?network=9mobile');
-      if (response.success && response.data.plans[0].plans) {
-        setPlans(response.data.plans[0].plans);
-        // Set initial selected plan
-        if (response.data.plans[0].plans.length > 0) {
-          setSelectedPlan(response.data.plans[0].plans[0]);
+      // Check cache first
+      const cachedPlans = await loadCachedPlans();
+      if (cachedPlans) {
+        setPlans(cachedPlans);
+        if (cachedPlans.length > 0) {
+          setSelectedPlan(cachedPlans[0]);
+        }
+        return;
+      }
+  
+      const response = await ApiClient.get('/payscribe/data/plans?network=9mobile');
+      if (response.success && response.data.plans) {
+        // The plans are directly in response.data.plans
+        const newPlans = response.data.plans;
+        setPlans(newPlans);
+        saveCachedPlans(newPlans);
+        
+        if (newPlans.length > 0) {
+          setSelectedPlan(newPlans[0]);
         }
       }
     } catch (error) {
@@ -454,32 +503,44 @@ export default function GloScreen() {
       setIsLoading(false);
     }
   };
-
+  
+  // Update the Plan interface to match the API response
+  interface Plan {
+    plan_code: string;
+    name: string;
+    category: string;
+    alias: string;
+    amount: number;
+  }
+  
+  // Update the filterPlansByDuration function to better match plan names
   const filterPlansByDuration = (duration: string) => {
     let filtered = plans.filter(plan => {
       const name = plan.name.toLowerCase();
       switch (duration) {
         case 'Daily':
-          return name.includes('day') || name.includes('1 day');
+          return name.includes('1 day') || name.includes('daily') || name.includes('24 hours');
         case 'Weekly':
-          return name.includes('7 days') || name.includes('week');
+          return name.includes('7 days') || name.includes('week') || name.includes('14 days');
         case 'Monthly':
-          return name.includes('30 days') || name.includes('month');
+          return name.includes('30 days') || name.includes('month') || name.includes('30days');
         case 'Yearly':
-          return name.includes('365') || name.includes('year');
+          return name.includes('365') || name.includes('year') || name.includes('annual');
         default:
           return true;
       }
     });
+    
+    // Sort plans by amount
+    filtered = filtered.sort((a, b) => a.amount - b.amount);
+    
     setFilteredPlans(filtered);
-    // Set first plan as selected if available
     if (filtered.length > 0) {
       setSelectedPlan(filtered[0]);
     } else {
       setSelectedPlan(null);
     }
   };
-
 
   // Plan selection modal
   const PlanSelectionModal = () => (
@@ -729,11 +790,24 @@ export default function GloScreen() {
   </View>
 </View>
   
-            {/* Purchase Button */}
+            
             <Pressable 
               style={styles.purchaseButton}
               onPress={() => {
-                router.push('/payment-confirmation');
+                if (selectedPlan && phoneNumber) {
+                  router.push({
+                    pathname: '/summary',
+                    params: {
+                      provider: '9mobile',
+                      subscriptionType: subscriptionType,
+                      phoneNumber: phoneNumber,
+                      plan: selectedPlan.name,
+                      amount: selectedPlan.amount.toString(),
+                      planCode: selectedPlan.plan_code,
+                      type: 'data' // or 'airtime'
+                    }
+                  });
+                }
               }}
             >
               <Text style={styles.purchaseButtonText}>Purchase</Text>

@@ -1,268 +1,192 @@
-import { 
-  View, 
-  Text, 
-  StyleSheet, 
-  Pressable, 
-  ScrollView, 
-  Image, 
-  ActivityIndicator 
-} from "react-native";
+import { View, Text, StyleSheet, Pressable, ScrollView, Image } from "react-native";
 import { router } from "expo-router";
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { Ionicons } from '@expo/vector-icons';
-import { TokenManager } from './utilities/tokenManager';
-import { ApiClient } from './utilities/apiClient';
 
-// Types
-interface Service {
-  id: string;
-  name: string;
-  icon: string;
-  rating: number;
-  backgroundColor: string;
-  category: string;
-  description?: string;
-  price?: number;
-  isAvailable?: boolean;
-}
+// Static data for services
+const DIGITAL_SERVICES = [
+  {
+    id: '1',
+    name: 'Airtel',
+    icon: require('../assets/networks/airtel.png'),
+    rating: 4.8,
+    backgroundColor: '#FF0000',
+    category: 'Subscriptions'
+  },
+  {
+    id: '2',
+    name: 'MTN',
+    icon: require('../assets/networks/mtn.png'),
+    rating: 4.9,
+    backgroundColor: '#FFD700',
+    category: 'Subscriptions'
+  },
+  {
+    id: '3',
+    name: 'Glo',
+    icon: require('../assets/networks/glo.png'),
+    rating: 4.7,
+    backgroundColor: '#008000',
+    category: 'Subscriptions'
+  },
+  {
+    id: '4',
+    name: '9mobile',
+    icon: require('../assets/networks/9mobile.png'),
+    rating: 4.6,
+    backgroundColor: '#006400',
+    category: 'Subscriptions'
+  },
+  {
+    id: '5',
+    name: 'DSTV',
+    icon: require('../assets/services/dstv.png'),
+    rating: 4.8,
+    backgroundColor: '#2196F3',
+    category: 'Cable TV'
+  },
+  {
+    id: '6',
+    name: 'GOtv',
+    icon: require('../assets/services/gotv.png'),
+    rating: 4.7,
+    backgroundColor: '#3F51B5',
+    category: 'Cable TV'
+  },
+  {
+    id: '7',
+    name: 'StarTimes',
+    icon: require('../assets/services/startimes.png'),
+    rating: 4.6,
+    backgroundColor: '#E91E63',
+    category: 'Cable TV'
+  },
+  {
+    id: '8',
+    name: 'Betting',
+    icon: require('../assets/services/betting.png'),
+    rating: 4.5,
+    backgroundColor: '#4CAF50',
+    category: 'Betting'
+  }
+];
 
-interface Category {
-  id: string;
-  name: string;
-}
+const FILTERS = ['All', 'Subscriptions', 'Gift Cards', 'Recharge Card', 'Cable TV', 'Betting'];
 
 export default function DigitalServicesScreen() {
-  // State
   const [activeFilter, setActiveFilter] = useState('All');
   const [favorites, setFavorites] = useState<string[]>([]);
-  const [services, setServices] = useState<Service[]>([]);
-  const [categories, setCategories] = useState<Category[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
 
-  // Load initial data
-  useEffect(() => {
-    loadInitialData();
-  }, []);
-
-  const loadInitialData = async () => {
-    try {
-      setIsLoading(true);
-      await Promise.all([
-        loadServices(),
-        loadUserFavorites(),
-        loadCategories()
-      ]);
-    } catch (error) {
-      console.error('Error loading initial data:', error);
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  const loadServices = async () => {
-    try {
-        const response = await ApiClient.get('/services/digital');
-        console.log('API Response:', response); // Debug log
-
-        if (response.success && response.data && response.data.services) {
-            // If the services are nested in a 'services' property
-            setServices(response.data.services);
-        } else if (response.success && Array.isArray(response.data)) {
-            // If services are directly in the data array
-            setServices(response.data);
-        } else {
-            setServices([]); // Set empty array as fallback
-            setError(response.message || 'Failed to load services');
-        }
-    } catch (error) {
-        setServices([]); // Set empty array on error
-        setError('Network error occurred');
-        console.error('Error loading services:', error);
-    }
-};
-
-
-const loadUserFavorites = async () => {
-  try {
-      const response = await ApiClient.get('/user/favorites');
-      console.log('Favorites Response:', response); // Debug log
-      
-      if (response.success && response.data && response.data.favorites) {
-          // Extract just the IDs from the favorites array
-          setFavorites(response.data.favorites.map((fav: Service) => fav.id));
-      } else {
-          setFavorites([]);
-      }
-  } catch (error) {
-      console.error('Error loading favorites:', error);
-      setFavorites([]);
-  }
-};
-
-  const loadCategories = async () => {
-    try {
-      const response = await ApiClient.get('/services/categories');
-      if (response.success) {
-        setCategories([{ id: 'all', name: 'All' }, ...response.data]);
-      }
-    } catch (error) {
-      console.error('Error loading categories:', error);
-    }
-  };
-
-  const toggleFavorite = async (serviceId: string) => {
-    try {
-      const endpoint = favorites.includes(serviceId) 
-        ? `/user/favorites/${serviceId}/remove`
-        : `/user/favorites/${serviceId}/add`;
-      
-      const response = await ApiClient.post(endpoint, {});
-      
-      if (response.success) {
-        setFavorites(prev => 
-          prev.includes(serviceId)
-            ? prev.filter(id => id !== serviceId)
-            : [...prev, serviceId]
-        );
-      } else {
-        console.error('Failed to update favorite:', response.message);
-      }
-    } catch (error) {
-      console.error('Error updating favorite:', error);
-    }
-  };
-
-  const filteredServices = services?.filter(service => 
-    activeFilter === 'All' || service.category === activeFilter
-) || [];
-
-  // Loading State
-  if (isLoading) {
-    return (
-      <View style={styles.loadingContainer}>
-        <ActivityIndicator size="large" color="#8A2BE2" />
-      </View>
+  const toggleFavorite = (serviceId: string) => {
+    setFavorites(prev => 
+      prev.includes(serviceId)
+        ? prev.filter(id => id !== serviceId)
+        : [...prev, serviceId]
     );
-  }
+  };
 
-  // Error State
-  if (error) {
-    return (
-      <View style={styles.errorContainer}>
-        <Text style={styles.errorText}>{error}</Text>
-        <Pressable style={styles.retryButton} onPress={loadInitialData}>
-          <Text style={styles.retryText}>Retry</Text>
+  const filteredServices = DIGITAL_SERVICES.filter(service => 
+    activeFilter === 'All' || service.category === activeFilter
+  );
+
+  return (
+    <View style={styles.container}>
+      {/* Header */}
+      <View style={styles.header}>
+        <Pressable 
+          onPress={() => router.back()} 
+          style={styles.iconButton}
+        >
+          <Ionicons name="chevron-back" size={24} color="#000" />
+        </Pressable>
+        <Text style={styles.headerTitle}>Digital Services</Text>
+        <Pressable 
+          onPress={() => router.push("/search")} 
+          style={styles.iconButton}
+        >
+          <Ionicons name="search" size={24} color="#000" />
         </Pressable>
       </View>
-    );
-  }
 
-
-    // Main Render
-    return (
-      <View style={styles.container}>
-        {/* Header */}
-        <View style={styles.header}>
-          <Pressable 
-            onPress={() => router.back()} 
-            style={styles.iconButton}
-          >
-            <Ionicons name="chevron-back" size={24} color="#000" />
-          </Pressable>
-          <Text style={styles.headerTitle}>Digital Services</Text>
-          <Pressable 
-            onPress={() => router.push("/search")} 
-            style={styles.iconButton}
-          >
-            <Ionicons name="search" size={24} color="#000" />
-          </Pressable>
-        </View>
-  
-        {/* Filter Tabs */}
-        <View style={styles.filterContainer}>
-          <ScrollView 
-            horizontal 
-            showsHorizontalScrollIndicator={false} 
-            style={styles.filterTabs}
-            contentContainerStyle={styles.filterTabsContent}
-          >
-            <Pressable style={styles.menuButton}>
-              <Ionicons name="menu-outline" size={24} color="#000" />
-            </Pressable>
-            {['All', 'Subscriptions', 'Gift Cards', 'Recharge Card'].map((filter) => (
-              <Pressable 
-                key={filter}
-                style={[
-                  styles.filterTab, 
-                  activeFilter === filter && styles.activeTab
-                ]}
-                onPress={() => setActiveFilter(filter)}
-              >
-                <Text style={[
-                  styles.filterText,
-                  activeFilter === filter && styles.activeFilterText
-                ]}>
-                  {filter}
-                </Text>
-              </Pressable>
-            ))}
-          </ScrollView>
-        </View>
-  
-        {/* Services Grid */}
+      {/* Filter Tabs */}
+      <View style={styles.filterContainer}>
         <ScrollView 
-          style={styles.servicesContainer}
-          showsVerticalScrollIndicator={false}
+          horizontal 
+          showsHorizontalScrollIndicator={false} 
+          style={styles.filterTabs}
+          contentContainerStyle={styles.filterTabsContent}
         >
-          <View style={styles.servicesGrid}>
-            {filteredServices.map((service) => (
-              <Pressable 
-                key={service.id} 
-                style={styles.serviceCardWrapper}
-                onPress={() => router.push(`/services/${service.name.toLowerCase()}`)}
-              >
-                <View style={[styles.serviceCard, { backgroundColor: service.backgroundColor }]}>
-                  <Image 
-                    source={
-                      typeof service.icon === 'string' 
-                        ? { uri: service.icon }
-                        : require('../assets/default-service-icon.png')
-                    }
-                    style={styles.serviceImage}
-                    resizeMode="contain"
-                    defaultSource={require('../assets/default-service-icon.png')}
-                  />
-                  <Pressable 
-                    style={styles.favoriteButton}
-                    onPress={(e) => {
-                      e.stopPropagation();
-                      toggleFavorite(service.id);
-                    }}
-                  >
-                    <View style={styles.favoriteButtonInner}>
-                      <Ionicons 
-                        name={favorites.includes(service.id) ? "heart" : "heart-outline"} 
-                        size={20} 
-                        color="#8A2BE2" 
-                      />
-                    </View>
-                  </Pressable>
-                </View>
-                <View style={styles.serviceInfo}>
-                  <Text style={styles.serviceName}>{service.name}</Text>
-                  <View style={styles.ratingContainer}>
-                    <Ionicons name="star" size={16} color="#8A2BE2" />
-                    <Text style={styles.ratingText}>{service.rating}</Text>
-                  </View>
-                </View>
-              </Pressable>
-            ))}
-          </View>
+          <Pressable style={styles.menuButton}>
+            <Ionicons name="menu-outline" size={24} color="#000" />
+          </Pressable>
+          {FILTERS.map((filter) => (
+            <Pressable 
+              key={filter}
+              style={[
+                styles.filterTab, 
+                activeFilter === filter && styles.activeTab
+              ]}
+              onPress={() => setActiveFilter(filter)}
+            >
+              <Text style={[
+                styles.filterText,
+                activeFilter === filter && styles.activeFilterText
+              ]}>
+                {filter}
+              </Text>
+            </Pressable>
+          ))}
         </ScrollView>
       </View>
-    );
-  }
+
+      {/* Services Grid */}
+      <ScrollView 
+        style={styles.servicesContainer}
+        showsVerticalScrollIndicator={false}
+      >
+        <View style={styles.servicesGrid}>
+          {filteredServices.map((service) => (
+            <Pressable 
+              key={service.id} 
+              style={styles.serviceCardWrapper}
+              onPress={() => router.push(`/${service.name.toLowerCase()}`)}
+            >
+              <View style={[styles.serviceCard, { backgroundColor: service.backgroundColor }]}>
+                <Image 
+                  source={service.icon}
+                  style={styles.serviceImage}
+                  resizeMode="contain"
+                />
+                <Pressable 
+                  style={styles.favoriteButton}
+                  onPress={(e) => {
+                    e.stopPropagation();
+                    toggleFavorite(service.id);
+                  }}
+                >
+                  <View style={styles.favoriteButtonInner}>
+                    <Ionicons 
+                      name={favorites.includes(service.id) ? "heart" : "heart-outline"} 
+                      size={20} 
+                      color="#8A2BE2" 
+                    />
+                  </View>
+                </Pressable>
+              </View>
+              <View style={styles.serviceInfo}>
+                <Text style={styles.serviceName}>{service.name}</Text>
+                <View style={styles.ratingContainer}>
+                  <Ionicons name="star" size={16} color="#8A2BE2" />
+                  <Text style={styles.ratingText}>{service.rating}</Text>
+                </View>
+              </View>
+            </Pressable>
+          ))}
+        </View>
+      </ScrollView>
+    </View>
+  );
+}
   
   const styles = StyleSheet.create({
     container: {
